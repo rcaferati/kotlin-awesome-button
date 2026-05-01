@@ -1,0 +1,55 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew :awesome-button-compose:testDebugUnitTest
+
+      - name: Assemble release
+        run: ./gradlew :awesome-button-compose:assembleRelease
+
+      - name: Check publishing secrets
+        id: publishing-secrets
+        shell: bash
+        run: |
+          if [[ -n "${ORG_GRADLE_PROJECT_mavenCentralUsername}" \
+            && -n "${ORG_GRADLE_PROJECT_mavenCentralPassword}" \
+            && -n "${ORG_GRADLE_PROJECT_signingInMemoryKey}" \
+            && -n "${ORG_GRADLE_PROJECT_signingInMemoryKeyPassword}" ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to Maven Central
+        if: steps.publishing-secrets.outputs.present == 'true'
+        run: ./gradlew :awesome-button-compose:publishAndReleaseToMavenCentral --no-configuration-cache
+
+      - name: Skip publish
+        if: steps.publishing-secrets.outputs.present != 'true'
+        run: echo "Publishing secrets are not configured; release upload skipped."
