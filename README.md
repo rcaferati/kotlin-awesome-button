@@ -43,6 +43,17 @@ The library exports:
 
 ## Install
 
+Make sure the consuming app resolves dependencies from Maven Central:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
 ```kotlin
 dependencies {
     implementation("dev.caferati:awesome-button-compose:1.0.0")
@@ -294,6 +305,7 @@ not part of the Android v1 package.
 | `progressLoadingTimeMillis` | `Int` | `3000` | Fill travel duration before completion. |
 | `animateSize` | `Boolean` | `true` | Animates width/height changes. |
 | `textTransition` | `Boolean` | `false` | Animates text changes through the native-style character transition. |
+| `textTransitionSlotStaggerMillis` | `Int` | `7` | Milliseconds between character slots during text transitions. |
 | `animatedPlaceholder` | `Boolean` | `true` | Enables placeholder shimmer when in placeholder mode. |
 
 ### `ThemedButton`
@@ -308,6 +320,7 @@ not part of the Android v1 package.
 | `flat` | `Boolean` | `false` | Uses the theme flat variant when available. |
 | `transparent` | `Boolean` | `false` | Clears themed face/depth/shadow/placeholder/border colors. |
 | `autoWidth` | `Boolean` | `false` | Lets themed buttons measure string labels instead of using theme width. |
+| `textTransitionSlotStaggerMillis` | `Int` | `7` | Milliseconds between character slots during text transitions. |
 | `style` | `AwesomeButtonStyle?` | `null` | Explicit overrides applied after theme, size, and variant resolution. |
 
 ## Development
