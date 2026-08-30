@@ -5,12 +5,12 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
-internal const val DefaultTextTransitionSlotStaggerMillis = 7
-internal const val DefaultTextTransitionRandomizeStartStaggerMillis = DefaultTextTransitionSlotStaggerMillis
-internal const val DefaultTextTransitionExpandStaggerMillis = DefaultTextTransitionSlotStaggerMillis
-internal const val TextTransitionPostRandomizeHoldMillis = 10
-internal const val DefaultTextTransitionCollapseStaggerMillis = DefaultTextTransitionSlotStaggerMillis
-internal const val TextTransitionRefreshMillis = 16
+internal const val DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS = 7
+internal const val DEFAULT_TEXT_TRANSITION_RANDOMIZE_START_STAGGER_MILLIS = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS
+internal const val DEFAULT_TEXT_TRANSITION_EXPAND_STAGGER_MILLIS = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS
+internal const val TEXT_TRANSITION_POST_RANDOMIZE_HOLD_MILLIS = 10
+internal const val DEFAULT_TEXT_TRANSITION_COLLAPSE_STAGGER_MILLIS = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS
+internal const val TEXT_TRANSITION_REFRESH_MILLIS = 16
 
 private enum class LetterWidthGroup {
     Narrow,
@@ -47,9 +47,16 @@ internal data class AutoWidthTextTransitionTiming(
 )
 
 internal sealed interface ButtonTextUpdatePlan {
-    data class Assign(val text: String?) : ButtonTextUpdatePlan
+    data class Assign(
+        val text: String?,
+    ) : ButtonTextUpdatePlan
+
     data object Keep : ButtonTextUpdatePlan
-    data class Transition(val sourceText: String, val targetText: String) : ButtonTextUpdatePlan
+
+    data class Transition(
+        val sourceText: String,
+        val targetText: String,
+    ) : ButtonTextUpdatePlan
 }
 
 internal enum class AutoWidthTextFlow {
@@ -103,8 +110,7 @@ internal sealed interface AutoWidthTextUpdatePlan {
     ) : AutoWidthTextUpdatePlan
 }
 
-internal fun normalizeTextTransitionSlotStaggerMillis(slotStaggerMillis: Int): Int =
-    max(1, slotStaggerMillis)
+internal fun normalizeTextTransitionSlotStaggerMillis(slotStaggerMillis: Int): Int = max(0, slotStaggerMillis)
 
 internal fun getTextTransitionRandomizeStartMillis(
     index: Int,
@@ -134,7 +140,7 @@ internal fun getTextTransitionRandomizeStartMillis(
 internal fun getTextTransitionTimeline(
     fromText: String,
     targetText: String,
-    slotStaggerMillis: Int = DefaultTextTransitionSlotStaggerMillis,
+    slotStaggerMillis: Int = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS,
 ): TextTransitionTimeline {
     val sourceLength = fromText.length
     val targetLength = targetText.length
@@ -157,7 +163,7 @@ internal fun getTextTransitionTimeline(
                 slotStaggerMillis = normalizedSlotStaggerMillis,
             ) ?: 0
         }
-    val collapseStartMillis = lastRandomizeStartMillis + TextTransitionPostRandomizeHoldMillis
+    val collapseStartMillis = lastRandomizeStartMillis + TEXT_TRANSITION_POST_RANDOMIZE_HOLD_MILLIS
     val totalDurationMillis =
         if (maxLength == 0) {
             0
@@ -193,7 +199,8 @@ internal fun getTextTransitionCollapseMillis(
         return timeline.collapseStartMillis + (reverseExtraIndex * timeline.slotStaggerMillis)
     }
 
-    return timeline.collapseStartMillis + (extraCount * timeline.slotStaggerMillis) + (index * timeline.slotStaggerMillis)
+    return timeline.collapseStartMillis + (extraCount * timeline.slotStaggerMillis) +
+        (index * timeline.slotStaggerMillis)
 }
 
 private fun getLetterWidthGroup(character: Char): LetterWidthGroup? {
@@ -249,7 +256,7 @@ internal fun buildTextTransitionFrame(
     fromText: String,
     targetText: String,
     elapsedMillis: Int,
-    slotStaggerMillis: Int = DefaultTextTransitionSlotStaggerMillis,
+    slotStaggerMillis: Int = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS,
     random: () -> Double = { Random.nextDouble() },
 ): String {
     if (fromText.isEmpty()) {
@@ -264,11 +271,12 @@ internal fun buildTextTransitionFrame(
         return fromText
     }
 
-    val timeline = getTextTransitionTimeline(
-        fromText = fromText,
-        targetText = targetText,
-        slotStaggerMillis = slotStaggerMillis,
-    )
+    val timeline =
+        getTextTransitionTimeline(
+            fromText = fromText,
+            targetText = targetText,
+            slotStaggerMillis = slotStaggerMillis,
+        )
     if (elapsedMillis >= timeline.totalDurationMillis) {
         return targetText
     }
@@ -351,7 +359,7 @@ internal fun resolveAutoWidthTextTransitionTiming(
     fromText: String,
     targetText: String,
     flow: AutoWidthTextFlow,
-    slotStaggerMillis: Int = DefaultTextTransitionSlotStaggerMillis,
+    slotStaggerMillis: Int = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS,
 ): AutoWidthTextTransitionTiming {
     val timeline =
         getTextTransitionTimeline(
@@ -375,7 +383,8 @@ internal fun resolveAutoWidthTextTransitionTiming(
                 widthDurationMillis = timeline.totalDurationMillis,
             )
         AutoWidthTextFlow.Initial,
-        AutoWidthTextFlow.TextOnly ->
+        AutoWidthTextFlow.TextOnly,
+        ->
             AutoWidthTextTransitionTiming(
                 widthDelayMillis = 0,
                 textDelayMillis = 0,
@@ -392,7 +401,7 @@ internal fun resolveAutoWidthTextUpdatePlan(
     displayedText: String?,
     animateSize: Boolean,
     textTransition: Boolean,
-    slotStaggerMillis: Int = DefaultTextTransitionSlotStaggerMillis,
+    slotStaggerMillis: Int = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS,
 ): AutoWidthTextUpdatePlan {
     if (!isEligible || targetText == null || targetWidthPx == null) {
         return AutoWidthTextUpdatePlan.FallbackToTextSync
@@ -419,12 +428,13 @@ internal fun resolveAutoWidthTextUpdatePlan(
                 sourceText = sourceText,
                 targetText = targetText,
                 targetWidthPx = targetWidthPx,
-                timing = resolveAutoWidthTextTransitionTiming(
-                    fromText = sourceText,
-                    targetText = targetText,
-                    flow = flow,
-                    slotStaggerMillis = slotStaggerMillis,
-                ),
+                timing =
+                    resolveAutoWidthTextTransitionTiming(
+                        fromText = sourceText,
+                        targetText = targetText,
+                        flow = flow,
+                        slotStaggerMillis = slotStaggerMillis,
+                    ),
                 animateSize = animateSize,
                 animateText = textTransition,
             )
@@ -434,12 +444,13 @@ internal fun resolveAutoWidthTextUpdatePlan(
                 sourceText = sourceText,
                 targetText = targetText,
                 targetWidthPx = targetWidthPx,
-                timing = resolveAutoWidthTextTransitionTiming(
-                    fromText = sourceText,
-                    targetText = targetText,
-                    flow = flow,
-                    slotStaggerMillis = slotStaggerMillis,
-                ),
+                timing =
+                    resolveAutoWidthTextTransitionTiming(
+                        fromText = sourceText,
+                        targetText = targetText,
+                        flow = flow,
+                        slotStaggerMillis = slotStaggerMillis,
+                    ),
                 animateSize = animateSize,
                 animateText = textTransition,
             )
@@ -494,7 +505,7 @@ internal fun shouldDeferReleaseAutoWidthTransition(
 internal suspend fun runFrameTextTransition(
     fromText: String,
     targetText: String,
-    slotStaggerMillis: Int = DefaultTextTransitionSlotStaggerMillis,
+    slotStaggerMillis: Int = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS,
     random: () -> Double = { Random.nextDouble() },
     onUpdate: (String) -> Unit,
     onComplete: (() -> Unit)? = null,

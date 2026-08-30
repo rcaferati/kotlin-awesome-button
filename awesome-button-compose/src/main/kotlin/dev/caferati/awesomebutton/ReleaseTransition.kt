@@ -4,26 +4,25 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import kotlin.math.sqrt
 
-internal const val ReleaseSpringStiffness = 280f
-internal const val ReleaseSpringDamping = 20f
-internal val ReleaseSpringDampingRatio: Float =
-    ReleaseSpringDamping / (2f * sqrt(ReleaseSpringStiffness))
-internal const val ReleaseSpringSettleDurationMillis = 240
-internal const val ReleaseGeometryPressProgressFloor = -0.25f
+internal const val RELEASE_SPRING_STIFFNESS = 280f
+internal const val RELEASE_SPRING_DAMPING = 20f
+internal val releaseSpringDampingRatio: Float =
+    RELEASE_SPRING_DAMPING / (2f * sqrt(RELEASE_SPRING_STIFFNESS))
+internal const val RELEASE_SPRING_SETTLE_DURATION_MILLIS = 240
+internal const val RELEASE_GEOMETRY_PRESS_PROGRESS_FLOOR = -0.25f
 
-internal val AwesomeButtonRawPressProgressKey =
+internal val awesomeButtonRawPressProgressKey =
     SemanticsPropertyKey<Float>("AwesomeButtonRawPressProgress")
-internal val AwesomeButtonVisualPressProgressKey =
+internal val awesomeButtonVisualPressProgressKey =
     SemanticsPropertyKey<Float>("AwesomeButtonVisualPressProgress")
-internal val AwesomeButtonGeometryPressProgressKey =
+internal val awesomeButtonGeometryPressProgressKey =
     SemanticsPropertyKey<Float>("AwesomeButtonGeometryPressProgress")
 
-internal var SemanticsPropertyReceiver.awesomeButtonRawPressProgress by AwesomeButtonRawPressProgressKey
-internal var SemanticsPropertyReceiver.awesomeButtonVisualPressProgress by AwesomeButtonVisualPressProgressKey
-internal var SemanticsPropertyReceiver.awesomeButtonGeometryPressProgress by AwesomeButtonGeometryPressProgressKey
+internal var SemanticsPropertyReceiver.awesomeButtonRawPressProgress by awesomeButtonRawPressProgressKey
+internal var SemanticsPropertyReceiver.awesomeButtonVisualPressProgress by awesomeButtonVisualPressProgressKey
+internal var SemanticsPropertyReceiver.awesomeButtonGeometryPressProgress by awesomeButtonGeometryPressProgressKey
 
-internal fun clampedVisualPressProgress(progress: Float): Float =
-    progress.coerceIn(0f, 1f)
+internal fun clampedVisualPressProgress(progress: Float): Float = progress.coerceIn(0f, 1f)
 
 internal fun shellGeometryPressProgress(progress: Float): Float =
-    progress.coerceIn(ReleaseGeometryPressProgressFloor, 1f)
+    progress.coerceIn(RELEASE_GEOMETRY_PRESS_PROGRESS_FLOOR, 1f)

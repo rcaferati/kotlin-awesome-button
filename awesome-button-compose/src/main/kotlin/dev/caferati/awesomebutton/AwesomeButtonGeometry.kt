@@ -3,7 +3,7 @@ package dev.caferati.awesomebutton
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-internal const val ShadowWidthFactor = 0.98f
+internal const val SHADOW_WIDTH_FACTOR = 0.98f
 
 internal data class AwesomeButtonGeometry(
     val faceHeight: Dp,
@@ -17,6 +17,5 @@ internal data class AwesomeButtonGeometry(
         return (raiseAmount * 2.5f) - ((raiseAmount / 2f) * geometryPressValue)
     }
 
-    fun faceTopOffset(pressValue: Float): Dp =
-        raiseAmount * shellGeometryPressProgress(pressValue)
+    fun faceTopOffset(pressValue: Float): Dp = raiseAmount * shellGeometryPressProgress(pressValue)
 }

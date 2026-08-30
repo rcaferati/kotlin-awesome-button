@@ -145,6 +145,8 @@ internal fun SocialScreen(modifier: Modifier = Modifier) {
                     name = themeName,
                     type = ButtonVariant.X,
                     width = 60.dp,
+                    pressInAnimationDurationMillis = 140,
+                    accessibilityLabel = "X",
                     style = AwesomeButtonStyle(borderRadius = 8.dp, raiseAmount = 8.dp),
                     progress = true,
                     onPress = delayedCompletion(scope, 1000),

@@ -6,7 +6,7 @@ import org.junit.Test
 
 class AwesomeButtonGeometryTest {
     @Test
-    fun usesFlutterHeightModel() {
+    fun totalShellHeightEqualsDocumentedFaceHeightPlusRaiseAmount() {
         val geometry = AwesomeButtonGeometry(faceHeight = 52.dp, raiseAmount = 6.dp)
 
         assertEquals(58.dp, geometry.totalHeight)

@@ -1,6 +1,7 @@
 package dev.caferati.awesomebutton
 
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -48,8 +49,7 @@ class AwesomeButtonInstrumentedTest : AwesomeButtonInstrumentedTestBase() {
             AwesomeButton(child = "Save", disabled = true, onPress = { presses += 1 })
         }
 
-        composeRule.onNodeWithTag("AwesomeButton").performClick()
-        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("AwesomeButton").assertHasNoClickAction()
 
         assertEquals(0, presses)
     }

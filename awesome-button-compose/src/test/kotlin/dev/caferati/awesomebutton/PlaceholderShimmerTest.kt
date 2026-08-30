@@ -8,7 +8,7 @@ import org.junit.Test
 class PlaceholderShimmerTest {
     @Test
     fun loopDurationMatchesFlutterAndSwift() {
-        assertEquals(3223, PlaceholderLoopDurationMillis)
+        assertEquals(3223, PLACEHOLDER_LOOP_DURATION_MILLIS)
     }
 
     @Test
@@ -21,10 +21,10 @@ class PlaceholderShimmerTest {
     @Test
     fun loopPhaseWrapsAcrossRepeatedCycles() {
         assertEquals(0f, placeholderLoopPhase(0), 0.0001f)
-        assertEquals(0.5f, placeholderLoopPhase(PlaceholderLoopDurationMillis / 2L), 0.001f)
-        assertEquals(0f, placeholderLoopPhase(PlaceholderLoopDurationMillis.toLong()), 0.0001f)
-        assertEquals(0.25f, placeholderLoopPhase((PlaceholderLoopDurationMillis * 1.25f).toLong()), 0.001f)
-        assertEquals(0.75f, placeholderLoopPhase((PlaceholderLoopDurationMillis * 3.75f).toLong()), 0.001f)
+        assertEquals(0.5f, placeholderLoopPhase(PLACEHOLDER_LOOP_DURATION_MILLIS / 2L), 0.001f)
+        assertEquals(0f, placeholderLoopPhase(PLACEHOLDER_LOOP_DURATION_MILLIS.toLong()), 0.0001f)
+        assertEquals(0.25f, placeholderLoopPhase((PLACEHOLDER_LOOP_DURATION_MILLIS * 1.25f).toLong()), 0.001f)
+        assertEquals(0.75f, placeholderLoopPhase((PLACEHOLDER_LOOP_DURATION_MILLIS * 3.75f).toLong()), 0.001f)
     }
 
     @Test

@@ -273,7 +273,8 @@ Built-in variants:
 - `ButtonVariant.Twitter`
 
 `ButtonVariant.X` is preferred for new social examples. `ButtonVariant.Twitter`
-remains available for compatibility with the original Flutter-aligned API.
+remains as a deprecated compatibility alias and resolves to the same built-in
+visual treatment.
 
 Built-in sizes:
 
@@ -297,9 +298,10 @@ not part of the Android v1 package.
 | `onLongPress` | `(() -> Unit)?` | `null` | Optional long-press handler. |
 | `disabled` | `Boolean` | `false` | Blocks pointer, keyboard, and accessibility activation. |
 | `width` | `Dp?` | `null` | Fixed width. When omitted, the button measures content unless `stretch = true`. |
-| `height` | `Dp` | `52.dp` | Total shell height. |
+| `height` | `Dp` | `52.dp` | Interactive face height before the raise/depth layer. Total shell height equals face height plus the resolved raise amount. |
 | `stretch` | `Boolean` | `false` | Fill available width. |
 | `style` | `AwesomeButtonStyle?` | `null` | Visual style overrides. |
+| `pressInAnimationDurationMillis` | `Int?` | `null` | Optional press-down override. When absent, `style.animationDurationMillis` and then the 140 ms package fallback apply. |
 | `progress` | `Boolean` | `false` | Enables progress lifecycle and spinner transition. |
 | `showProgressBar` | `Boolean` | `true` | Hides only the progress fill when false. |
 | `progressLoadingTimeMillis` | `Int` | `3000` | Fill travel duration before completion. |
@@ -307,6 +309,17 @@ not part of the Android v1 package.
 | `textTransition` | `Boolean` | `false` | Animates text changes through the native-style character transition. |
 | `textTransitionSlotStaggerMillis` | `Int` | `7` | Milliseconds between character slots during text transitions. |
 | `animatedPlaceholder` | `Boolean` | `true` | Enables placeholder shimmer when in placeholder mode. |
+| `accessibilityLabel` | `String?` | `null` | Spoken identity override. Plain text and meaningful custom-content semantics are inferred when absent. |
+| `accessibilityHint` | `String?` | `null` | Label for the ordinary Compose semantic click action. It is not added to the spoken identity or state. |
+| `accessibilityLongPressLabel` | `String?` | `null` | Spoken semantic long-action name. The package-localized default is “Long press.” |
+
+For example, a `height` of `52.dp` with a resolved raise amount of `6.dp`
+produces a total shell height of `58.dp`:
+
+```text
+total shell height = face height + resolved raise amount
+58.dp = 52.dp + 6.dp
+```
 
 ### `ThemedButton`
 
@@ -322,6 +335,48 @@ not part of the Android v1 package.
 | `autoWidth` | `Boolean` | `false` | Lets themed buttons measure string labels instead of using theme width. |
 | `textTransitionSlotStaggerMillis` | `Int` | `7` | Milliseconds between character slots during text transitions. |
 | `style` | `AwesomeButtonStyle?` | `null` | Explicit overrides applied after theme, size, and variant resolution. |
+
+## Interaction, Theme, and Numeric Contract
+
+Callback/configuration replacements committed during a hold are live, while
+release and progress-completion callbacks are captured when their transition
+starts. Removing a long handler disarms the active gesture; adding one takes
+effect on the next gesture. Pointer cancellation, disablement, placeholder
+transition, and removal terminate once without activation. Atomic keyboard and
+semantic activation shares debounce and progress ownership without fabricating
+pointer-only lifecycle callbacks.
+
+Disabled styling wins over flat and the requested variant. Explicit dimensions
+and style values win over variant, then size, then package fallback. Width
+resolves stretch, fixed width, auto width, variant, size, fallback; height
+resolves explicit, variant, size, fallback. The themed wrapper owns its 200 ms
+variant interpolation and the inner button does not apply a second style
+animation. Other direct resolved-style changes use
+`style.animationDurationMillis`; theme-source and transparency changes snap.
+
+Numeric inputs are normalized before Compose layout or animation consumes
+them. Non-finite optional values act as absent, non-finite required values use
+their declared defaults, negative dimensions/durations clamp to zero, and
+opacity clamps to `[0, 1]`. Fixed width zero remains explicit.
+
+## Accessibility and System Adaptation
+
+`AwesomeButton` and `ThemedButton` expose one Compose button semantics node.
+Ordinary semantic activation and semantic long activation are atomic actions:
+they use the same debounce/progress ownership as touch, but do not fabricate
+pointer-only `onPressIn`, `onPressedIn`, `onPressOut`, or `onPressedOut`
+callbacks. Disabled, busy, and placeholder buttons expose no activation;
+unlabeled placeholders are hidden, while an explicitly labeled placeholder is
+discoverable as unavailable.
+
+The package requests a minimum 48 dp layout and interaction footprint, keeps
+typography in `sp`, allows labels to wrap and grow the face when font scale is
+above 1.0, and follows the active layout direction while keeping physical
+corner names physical. Android animator scale `0` enables the package Reduced
+Motion path: press, release, size, text, style, placeholder, and progress
+effects snap while callback ordering, debounce, long-press thresholds, and
+progress-handle ownership remain unchanged. Package-owned spoken state/action
+strings are Android resources and may be localized by adding resource locales.
 
 ## Development
 

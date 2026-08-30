@@ -3,10 +3,10 @@ package dev.caferati.awesomebutton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Test
 import org.junit.runner.RunWith
+import androidx.compose.ui.graphics.lerp as lerpColor
 
 @RunWith(AndroidJUnit4::class)
 class AwesomeButtonVariantInstrumentedTest : AwesomeButtonInstrumentedTestBase() {

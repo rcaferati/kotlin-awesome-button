@@ -1,19 +1,21 @@
 package dev.caferati.awesomebutton
 
-/** Completion handle used by progress buttons. */
-fun interface AwesomeButtonNext {
-    fun complete(callback: (() -> Unit)?)
+/** One-shot completion handle supplied to an accepted progress-button activation. */
+public fun interface AwesomeButtonNext {
+    /** Claims progress completion and snapshots [callback] for the completing transition. */
+    public fun complete(callback: (() -> Unit)?)
 
-    operator fun invoke(callback: (() -> Unit)? = null) {
+    /** Convenience syntax equivalent to [complete]. */
+    public operator fun invoke(callback: (() -> Unit)? = null) {
         complete(callback)
     }
 }
 
 /** Press handler used by [AwesomeButton] and [ThemedButton]. */
-typealias AwesomeButtonPressCallback = (AwesomeButtonNext?) -> Unit
+public typealias AwesomeButtonPressCallback = (AwesomeButtonNext?) -> Unit
 
 /** Built-in theme names supported by [ThemedButton] and [getTheme]. */
-enum class ThemeName {
+public enum class ThemeName {
     Basic,
     Bojack,
     Cartman,
@@ -25,13 +27,15 @@ enum class ThemeName {
 }
 
 /** Built-in button variants supported by themed buttons. */
-enum class ButtonVariant {
+public enum class ButtonVariant {
     Primary,
     Secondary,
     Anchor,
     Danger,
     Disabled,
     Flat,
+
+    @Deprecated("Use X", ReplaceWith("ButtonVariant.X"))
     Twitter,
     Messenger,
     Facebook,
@@ -45,7 +49,7 @@ enum class ButtonVariant {
 }
 
 /** Built-in size presets used by [ThemedButton]. */
-enum class ButtonSize {
+public enum class ButtonSize {
     Icon,
     Small,
     Medium,

@@ -4,32 +4,45 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp as lerpUnit
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.lerp as lerpColor
+import androidx.compose.ui.unit.lerp as lerpUnit
 
-/** Per-corner radius configuration for the shell, face, and shadow layers. */
-data class AwesomeButtonCornerRadii(
-    val topStart: Dp,
-    val topEnd: Dp,
-    val bottomEnd: Dp,
-    val bottomStart: Dp,
+/**
+ * Per-corner radius configuration for the shell, face, and shadow layers.
+ *
+ * Physical start/end values follow the current Compose layout direction.
+ *
+ * @property topStart top-start radius in density-independent pixels.
+ * @property topEnd top-end radius in density-independent pixels.
+ * @property bottomEnd bottom-end radius in density-independent pixels.
+ * @property bottomStart bottom-start radius in density-independent pixels.
+ */
+public data class AwesomeButtonCornerRadii(
+    public val topStart: Dp,
+    public val topEnd: Dp,
+    public val bottomEnd: Dp,
+    public val bottomStart: Dp,
 ) {
-    companion object {
-        fun all(radius: Dp) = AwesomeButtonCornerRadii(
-            topStart = radius,
-            topEnd = radius,
-            bottomEnd = radius,
-            bottomStart = radius,
-        )
+    /** Factories for common corner configurations. */
+    public companion object {
+        /** Returns a configuration that applies [radius] to all four corners. */
+        public fun all(radius: Dp): AwesomeButtonCornerRadii =
+            AwesomeButtonCornerRadii(
+                topStart = radius,
+                topEnd = radius,
+                bottomEnd = radius,
+                bottomStart = radius,
+            )
     }
 }
 
-enum class AwesomeButtonAnimationCurve {
+/** Timing curves available to button press and resolved-style transitions. */
+public enum class AwesomeButtonAnimationCurve {
     EaseOutCubic,
     EaseOut,
     Linear,
@@ -42,35 +55,67 @@ internal fun AwesomeButtonAnimationCurve.toEasing(): Easing =
         AwesomeButtonAnimationCurve.Linear -> LinearEasing
     }
 
-/** Visual configuration for [AwesomeButton]. */
-data class AwesomeButtonStyle(
-    val backgroundColor: Color? = null,
-    val backgroundActive: Color? = null,
-    val backgroundPlaceholder: Color? = null,
-    val backgroundProgress: Color? = null,
-    val depthColor: Color? = null,
-    val shadowColor: Color? = null,
-    val activityColor: Color? = null,
-    val pressedOverlayColor: Color? = null,
-    val foregroundColor: Color? = null,
-    val textSize: TextUnit? = null,
-    val textLineHeight: TextUnit? = null,
-    val textFontFamily: FontFamily? = null,
-    val borderRadius: Dp? = null,
-    val cornerRadii: AwesomeButtonCornerRadii? = null,
-    val borderWidth: Dp? = null,
-    val borderColor: Color? = null,
-    val raiseAmount: Dp? = null,
-    val contentGap: Dp? = null,
-    val animationDurationMillis: Int? = null,
-    val animationCurve: AwesomeButtonAnimationCurve? = null,
-    val disabledBackgroundColor: Color? = null,
-    val disabledDepthColor: Color? = null,
-    val disabledShadowColor: Color? = null,
-    val disabledForegroundColor: Color? = null,
-    val disabledBorderColor: Color? = null,
+/**
+ * Visual overrides for [AwesomeButton]; null fields defer to the active theme.
+ *
+ * Invalid numeric inputs are normalized by the button: negative dimensions and durations become
+ * zero, and non-finite optional dimensions are treated as absent.
+ *
+ * @property backgroundColor idle face color.
+ * @property backgroundActive pressed face color.
+ * @property backgroundPlaceholder placeholder face color.
+ * @property backgroundProgress progress-layer color.
+ * @property depthColor color of the visible lower depth layer.
+ * @property shadowColor outer shadow color.
+ * @property activityColor progress-indicator color.
+ * @property pressedOverlayColor overlay blended into the pressed face when needed.
+ * @property foregroundColor foreground color for the built-in string label.
+ * @property textSize label size as a Compose text unit.
+ * @property textLineHeight label line height as a Compose text unit.
+ * @property textFontFamily label font family.
+ * @property borderRadius fallback radius for every corner in density-independent pixels.
+ * @property cornerRadii physical per-corner overrides.
+ * @property borderWidth face border width in density-independent pixels.
+ * @property borderColor face border color.
+ * @property raiseAmount visible depth height in density-independent pixels.
+ * @property contentGap space between auxiliary slots and primary content.
+ * @property animationDurationMillis general press/style timing in milliseconds.
+ * @property animationCurve timing curve for timing-based visual transitions.
+ * @property disabledBackgroundColor disabled face override.
+ * @property disabledDepthColor disabled depth-layer override.
+ * @property disabledShadowColor disabled shadow override.
+ * @property disabledForegroundColor disabled foreground override.
+ * @property disabledBorderColor disabled border override.
+ */
+public data class AwesomeButtonStyle(
+    public val backgroundColor: Color? = null,
+    public val backgroundActive: Color? = null,
+    public val backgroundPlaceholder: Color? = null,
+    public val backgroundProgress: Color? = null,
+    public val depthColor: Color? = null,
+    public val shadowColor: Color? = null,
+    public val activityColor: Color? = null,
+    public val pressedOverlayColor: Color? = null,
+    public val foregroundColor: Color? = null,
+    public val textSize: TextUnit? = null,
+    public val textLineHeight: TextUnit? = null,
+    public val textFontFamily: FontFamily? = null,
+    public val borderRadius: Dp? = null,
+    public val cornerRadii: AwesomeButtonCornerRadii? = null,
+    public val borderWidth: Dp? = null,
+    public val borderColor: Color? = null,
+    public val raiseAmount: Dp? = null,
+    public val contentGap: Dp? = null,
+    public val animationDurationMillis: Int? = null,
+    public val animationCurve: AwesomeButtonAnimationCurve? = null,
+    public val disabledBackgroundColor: Color? = null,
+    public val disabledDepthColor: Color? = null,
+    public val disabledShadowColor: Color? = null,
+    public val disabledForegroundColor: Color? = null,
+    public val disabledBorderColor: Color? = null,
 ) {
-    fun merge(other: AwesomeButtonStyle?): AwesomeButtonStyle {
+    /** Returns this style with every non-null field from [other] applied. */
+    public fun merge(other: AwesomeButtonStyle?): AwesomeButtonStyle {
         if (other == null) return this
 
         return AwesomeButtonStyle(
@@ -83,16 +128,17 @@ data class AwesomeButtonStyle(
             activityColor = other.activityColor ?: activityColor,
             pressedOverlayColor = other.pressedOverlayColor ?: pressedOverlayColor,
             foregroundColor = other.foregroundColor ?: foregroundColor,
-            textSize = other.textSize ?: textSize,
-            textLineHeight = other.textLineHeight ?: textLineHeight,
+            textSize = normalizeOptionalTextUnit(other.textSize) ?: textSize,
+            textLineHeight = normalizeOptionalTextUnit(other.textLineHeight) ?: textLineHeight,
             textFontFamily = other.textFontFamily ?: textFontFamily,
-            borderRadius = other.borderRadius ?: borderRadius,
-            cornerRadii = other.cornerRadii ?: cornerRadii,
-            borderWidth = other.borderWidth ?: borderWidth,
+            borderRadius = normalizeOptionalDp(other.borderRadius) ?: borderRadius,
+            cornerRadii = normalizeCornerRadii(other.cornerRadii) ?: cornerRadii,
+            borderWidth = normalizeOptionalDp(other.borderWidth) ?: borderWidth,
             borderColor = other.borderColor ?: borderColor,
-            raiseAmount = other.raiseAmount ?: raiseAmount,
-            contentGap = other.contentGap ?: contentGap,
-            animationDurationMillis = other.animationDurationMillis ?: animationDurationMillis,
+            raiseAmount = normalizeOptionalDp(other.raiseAmount) ?: raiseAmount,
+            contentGap = normalizeOptionalDp(other.contentGap) ?: contentGap,
+            animationDurationMillis =
+                normalizeOptionalMillis(other.animationDurationMillis) ?: animationDurationMillis,
             animationCurve = other.animationCurve ?: animationCurve,
             disabledBackgroundColor = other.disabledBackgroundColor ?: disabledBackgroundColor,
             disabledDepthColor = other.disabledDepthColor ?: disabledDepthColor,
@@ -103,71 +149,82 @@ data class AwesomeButtonStyle(
     }
 }
 
-/** Theme data resolved through [AwesomeButtonTheme]. */
-data class AwesomeButtonThemeData(
-    val style: AwesomeButtonStyle,
+/**
+ * Theme data resolved through [AwesomeButtonTheme].
+ *
+ * @property style base visual values inherited by buttons in the provider.
+ */
+public data class AwesomeButtonThemeData(
+    public val style: AwesomeButtonStyle,
 ) {
-    fun merge(style: AwesomeButtonStyle?) = AwesomeButtonThemeData(this.style.merge(style))
+    /** Returns theme data whose base style includes non-null values from [style]. */
+    public fun merge(style: AwesomeButtonStyle?): AwesomeButtonThemeData =
+        AwesomeButtonThemeData(this.style.merge(style))
 
-    companion object {
-        val fallbackStyle = AwesomeButtonStyle(
-            backgroundColor = Color(0xFF2563EB),
-            depthColor = Color(0xFF1D4ED8),
-            shadowColor = Color.Black.copy(alpha = 0.15f),
-            backgroundPlaceholder = Color.Black.copy(alpha = 0.15f),
-            backgroundProgress = Color.Black.copy(alpha = 0.15f),
-            pressedOverlayColor = Color.Black.copy(alpha = 0.08f),
-            foregroundColor = Color.White,
-            activityColor = Color.White,
-            textSize = 14.sp,
-            textLineHeight = 20.sp,
-            borderRadius = 18.dp,
-            borderWidth = 0.dp,
-            borderColor = Color.Transparent,
-            raiseAmount = 6.dp,
-            contentGap = 10.dp,
-            animationDurationMillis = 140,
-            animationCurve = AwesomeButtonAnimationCurve.EaseOutCubic,
-            disabledBackgroundColor = Color(0xFFB8C6DB),
-            disabledDepthColor = Color(0xFF98A9C2),
-            disabledShadowColor = Color.Black.copy(alpha = 0.10f),
-            disabledForegroundColor = Color(0xFFF8FAFC),
-            disabledBorderColor = Color.Transparent,
-        )
+    /** Stable fallback values used when neither a theme nor call-site override supplies a field. */
+    public companion object {
+        /** Complete fallback style, including the 140 ms general animation duration. */
+        public val fallbackStyle: AwesomeButtonStyle =
+            AwesomeButtonStyle(
+                backgroundColor = Color(0xFF2563EB),
+                depthColor = Color(0xFF1D4ED8),
+                shadowColor = Color.Black.copy(alpha = 0.15f),
+                backgroundPlaceholder = Color.Black.copy(alpha = 0.15f),
+                backgroundProgress = Color.Black.copy(alpha = 0.15f),
+                pressedOverlayColor = Color.Black.copy(alpha = 0.08f),
+                foregroundColor = Color.White,
+                activityColor = Color.White,
+                textSize = 14.sp,
+                textLineHeight = 20.sp,
+                borderRadius = 18.dp,
+                borderWidth = 0.dp,
+                borderColor = Color.Transparent,
+                raiseAmount = 6.dp,
+                contentGap = 10.dp,
+                animationDurationMillis = 140,
+                animationCurve = AwesomeButtonAnimationCurve.EaseOutCubic,
+                disabledBackgroundColor = Color(0xFFB8C6DB),
+                disabledDepthColor = Color(0xFF98A9C2),
+                disabledShadowColor = Color.Black.copy(alpha = 0.10f),
+                disabledForegroundColor = Color(0xFFF8FAFC),
+                disabledBorderColor = Color.Transparent,
+            )
 
-        val fallback = AwesomeButtonThemeData(fallbackStyle)
+        /** Theme data wrapping [fallbackStyle]. */
+        public val fallback: AwesomeButtonThemeData = AwesomeButtonThemeData(fallbackStyle)
     }
 }
 
 internal fun resolvedVisualStyle(style: AwesomeButtonStyle): AwesomeButtonStyle {
+    val normalizedStyle = normalizeStyleInput(style)
     val fallback = AwesomeButtonThemeData.fallbackStyle
-    val borderRadius = style.borderRadius ?: fallback.borderRadius!!
+    val borderRadius = normalizedStyle.borderRadius ?: fallback.borderRadius!!
     return AwesomeButtonStyle(
-        backgroundColor = style.backgroundColor ?: fallback.backgroundColor,
-        backgroundActive = style.backgroundActive ?: fallback.backgroundActive,
-        backgroundPlaceholder = style.backgroundPlaceholder ?: fallback.backgroundPlaceholder,
-        backgroundProgress = style.backgroundProgress ?: fallback.backgroundProgress,
-        depthColor = style.depthColor ?: fallback.depthColor,
-        shadowColor = style.shadowColor ?: fallback.shadowColor,
-        activityColor = style.activityColor ?: fallback.activityColor,
-        pressedOverlayColor = style.pressedOverlayColor ?: fallback.pressedOverlayColor,
-        foregroundColor = style.foregroundColor ?: fallback.foregroundColor,
-        textSize = style.textSize ?: fallback.textSize,
-        textLineHeight = style.textLineHeight ?: fallback.textLineHeight,
-        textFontFamily = style.textFontFamily ?: fallback.textFontFamily,
+        backgroundColor = normalizedStyle.backgroundColor ?: fallback.backgroundColor,
+        backgroundActive = normalizedStyle.backgroundActive ?: fallback.backgroundActive,
+        backgroundPlaceholder = normalizedStyle.backgroundPlaceholder ?: fallback.backgroundPlaceholder,
+        backgroundProgress = normalizedStyle.backgroundProgress ?: fallback.backgroundProgress,
+        depthColor = normalizedStyle.depthColor ?: fallback.depthColor,
+        shadowColor = normalizedStyle.shadowColor ?: fallback.shadowColor,
+        activityColor = normalizedStyle.activityColor ?: fallback.activityColor,
+        pressedOverlayColor = normalizedStyle.pressedOverlayColor ?: fallback.pressedOverlayColor,
+        foregroundColor = normalizedStyle.foregroundColor ?: fallback.foregroundColor,
+        textSize = normalizedStyle.textSize ?: fallback.textSize,
+        textLineHeight = normalizedStyle.textLineHeight ?: fallback.textLineHeight,
+        textFontFamily = normalizedStyle.textFontFamily ?: fallback.textFontFamily,
         borderRadius = borderRadius,
-        cornerRadii = style.cornerRadii ?: AwesomeButtonCornerRadii.all(borderRadius),
-        borderWidth = style.borderWidth ?: fallback.borderWidth,
-        borderColor = style.borderColor ?: fallback.borderColor,
-        raiseAmount = style.raiseAmount ?: fallback.raiseAmount,
-        contentGap = style.contentGap ?: fallback.contentGap,
-        animationDurationMillis = style.animationDurationMillis ?: fallback.animationDurationMillis,
-        animationCurve = style.animationCurve ?: fallback.animationCurve,
-        disabledBackgroundColor = style.disabledBackgroundColor,
-        disabledDepthColor = style.disabledDepthColor,
-        disabledShadowColor = style.disabledShadowColor,
-        disabledForegroundColor = style.disabledForegroundColor,
-        disabledBorderColor = style.disabledBorderColor,
+        cornerRadii = normalizedStyle.cornerRadii ?: AwesomeButtonCornerRadii.all(borderRadius),
+        borderWidth = normalizedStyle.borderWidth ?: fallback.borderWidth,
+        borderColor = normalizedStyle.borderColor ?: fallback.borderColor,
+        raiseAmount = normalizedStyle.raiseAmount ?: fallback.raiseAmount,
+        contentGap = normalizedStyle.contentGap ?: fallback.contentGap,
+        animationDurationMillis = normalizedStyle.animationDurationMillis ?: fallback.animationDurationMillis,
+        animationCurve = normalizedStyle.animationCurve ?: fallback.animationCurve,
+        disabledBackgroundColor = normalizedStyle.disabledBackgroundColor,
+        disabledDepthColor = normalizedStyle.disabledDepthColor,
+        disabledShadowColor = normalizedStyle.disabledShadowColor,
+        disabledForegroundColor = normalizedStyle.disabledForegroundColor,
+        disabledBorderColor = normalizedStyle.disabledBorderColor,
     )
 }
 
@@ -201,10 +258,20 @@ internal fun interpolateAwesomeButtonStyle(
         contentGap = lerpNullableDp(start.contentGap, end.contentGap, progress),
         animationDurationMillis = if (progress < 1f) start.animationDurationMillis else end.animationDurationMillis,
         animationCurve = if (progress < 1f) start.animationCurve else end.animationCurve,
-        disabledBackgroundColor = lerpNullableColor(start.disabledBackgroundColor, end.disabledBackgroundColor, progress),
+        disabledBackgroundColor =
+            lerpNullableColor(
+                start.disabledBackgroundColor,
+                end.disabledBackgroundColor,
+                progress,
+            ),
         disabledDepthColor = lerpNullableColor(start.disabledDepthColor, end.disabledDepthColor, progress),
         disabledShadowColor = lerpNullableColor(start.disabledShadowColor, end.disabledShadowColor, progress),
-        disabledForegroundColor = lerpNullableColor(start.disabledForegroundColor, end.disabledForegroundColor, progress),
+        disabledForegroundColor =
+            lerpNullableColor(
+                start.disabledForegroundColor,
+                end.disabledForegroundColor,
+                progress,
+            ),
         disabledBorderColor = lerpNullableColor(start.disabledBorderColor, end.disabledBorderColor, progress),
     )
 }

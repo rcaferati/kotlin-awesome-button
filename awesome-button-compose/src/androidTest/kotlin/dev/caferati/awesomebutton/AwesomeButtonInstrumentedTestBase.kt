@@ -9,6 +9,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertTrue
@@ -28,6 +29,24 @@ abstract class AwesomeButtonInstrumentedTestBase {
     protected fun tapButton() {
         composeRule.onNodeWithTag("AwesomeButton").performTouchInput {
             down(center)
+            up()
+        }
+    }
+
+    protected fun pressButtonDown() {
+        composeRule.onNodeWithTag("AwesomeButton").performTouchInput {
+            down(center)
+        }
+    }
+
+    protected fun releaseButton() {
+        composeRule.onNodeWithTag("AwesomeButton").performTouchInput {
+            up()
+        }
+    }
+
+    protected fun releaseTouchOnRoot() {
+        composeRule.onRoot().performTouchInput {
             up()
         }
     }
@@ -56,8 +75,7 @@ abstract class AwesomeButtonInstrumentedTestBase {
             .fetchSemanticsNode()
             .config[key]
 
-    protected fun buttonImageWidth(): Int =
-        composeRule.onNodeWithTag("AwesomeButton").captureToImage().width
+    protected fun buttonImageWidth(): Int = composeRule.onNodeWithTag("AwesomeButton").captureToImage().width
 
     protected fun autoWidthTestStyle(animationDurationMillis: Int? = null): AwesomeButtonStyle =
         AwesomeButtonStyle(

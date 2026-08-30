@@ -2,78 +2,132 @@ package dev.caferati.awesomebutton
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import kotlin.math.roundToInt
 
+private enum class ButtonLayoutChild {
+    Chrome,
+    Content,
+    Activity,
+}
+
+/**
+ * Measures and places the same content composition that is rendered.
+ *
+ * Consumer content is never duplicated for intrinsic measurement. In auto-width mode its single
+ * measurable is measured loosely once, that placeable determines the shell width, and the same
+ * placeable is centered in the face. Fixed and stretch modes measure it once at the resolved width.
+ */
 @Composable
 internal fun AutoWidthButtonLayout(
     modifier: Modifier,
     resolvedWidthPx: Float?,
-    height: Dp,
-    totalHeight: Dp,
+    minimumFaceHeight: Dp,
+    raiseAmount: Dp,
+    pressValue: Float,
     stretch: Boolean,
-    paddingHorizontal: Dp,
-    paddingTop: Dp,
-    paddingBottom: Dp,
-    contentGap: Dp,
-    resolvedStyle: AwesomeButtonStyle,
-    child: String?,
-    before: (@Composable RowScope.() -> Unit)?,
-    after: (@Composable RowScope.() -> Unit)?,
-    content: (@Composable RowScope.() -> Unit)?,
-    contentClipAlignment: ContentClipAlignment,
-    shell: @Composable BoxScope.() -> Unit,
+    contentClipShape: Shape,
+    chrome: @Composable BoxScope.(AwesomeButtonGeometry) -> Unit,
+    content: (@Composable BoxScope.() -> Unit)?,
+    activity: (@Composable BoxScope.() -> Unit)?,
 ) {
-    SubcomposeLayout(modifier) { constraints ->
-        val faceHeightPx = height.roundToPx()
-        val totalHeightPx = totalHeight.roundToPx()
+    SubcomposeLayout(
+        modifier = modifier,
+    ) { constraints ->
+        val minimumFaceHeightPx = minimumFaceHeight.roundToPx()
+        val raiseAmountPx = raiseAmount.roundToPx()
         val explicitWidthPx = resolvedWidthPx?.roundToInt()
-
-        val measuredContentWidth =
-            if (explicitWidthPx == null && !stretch) {
-                val looseConstraints = constraints.copy(minWidth = 0, minHeight = 0)
-                subcompose("measure") {
-                    ButtonContent(
-                        modifier = Modifier,
-                        resolvedStyle = resolvedStyle,
-                        disabled = false,
-                        alpha = 1f,
-                        scale = 1f,
-                        paddingHorizontal = paddingHorizontal,
-                        paddingTop = paddingTop,
-                        paddingBottom = paddingBottom,
-                        contentGap = contentGap,
-                        child = child,
-                        before = before,
-                        after = after,
-                        content = content,
-                        contentClipAlignment = contentClipAlignment,
+        val maximumContentWidth =
+            when {
+                stretch && constraints.maxWidth != Constraints.Infinity -> constraints.maxWidth
+                explicitWidthPx != null -> explicitWidthPx.coerceAtMost(constraints.maxWidth)
+                else -> constraints.maxWidth
+            }
+        val contentMeasurable =
+            content?.let {
+                subcompose(ButtonLayoutChild.Content) {
+                    Box(
+                        modifier = Modifier.clip(contentClipShape),
+                        propagateMinConstraints = false,
+                        content = it,
                     )
-                }.maxOfOrNull { it.measure(looseConstraints).width } ?: faceHeightPx
+                }.single()
+            }
+
+        val autoContentPlaceable =
+            if (explicitWidthPx == null && !stretch && contentMeasurable != null) {
+                contentMeasurable.measure(
+                    Constraints(
+                        minWidth = 0,
+                        maxWidth = maximumContentWidth,
+                        minHeight = 0,
+                        maxHeight = constraints.maxHeight,
+                    ),
+                )
             } else {
-                0
+                null
             }
 
         val targetWidthPx =
             when {
                 stretch && constraints.maxWidth != Constraints.Infinity -> constraints.maxWidth
                 explicitWidthPx != null -> explicitWidthPx
-                else -> measuredContentWidth.coerceAtLeast(faceHeightPx)
-            }.coerceAtLeast(0)
+                else -> (autoContentPlaceable?.width ?: minimumFaceHeightPx).coerceAtLeast(minimumFaceHeightPx)
+            }.coerceIn(0, constraints.maxWidth)
 
-        val shellPlaceable =
-            subcompose("shell") {
-                Box(Modifier.requiredSize(targetWidthPx.toDp(), totalHeightPx.toDp()), content = shell)
-            }.first().measure(Constraints.fixed(targetWidthPx, totalHeightPx))
+        val contentPlaceable =
+            autoContentPlaceable
+                ?: contentMeasurable?.measure(
+                    Constraints(
+                        minWidth = targetWidthPx,
+                        maxWidth = targetWidthPx,
+                        minHeight = 0,
+                        maxHeight = constraints.maxHeight,
+                    ),
+                )
+        val faceHeightPx = maxOf(minimumFaceHeightPx, contentPlaceable?.height ?: 0)
+        val totalHeightPx = faceHeightPx + raiseAmountPx
+        val geometry = AwesomeButtonGeometry(faceHeightPx.toDp(), raiseAmountPx.toDp())
+        val contentTopOffsetPx = geometry.faceTopOffset(pressValue).roundToPx()
 
-        layout(targetWidthPx, totalHeightPx) {
-            shellPlaceable.place(0, 0)
+        val chromeMeasurable =
+            subcompose(ButtonLayoutChild.Chrome) {
+                Box(propagateMinConstraints = true) { chrome(geometry) }
+            }.single()
+        val activityMeasurable =
+            activity?.let {
+                subcompose(ButtonLayoutChild.Activity) {
+                    Box(
+                        modifier = Modifier.clip(contentClipShape),
+                        propagateMinConstraints = true,
+                        content = it,
+                    )
+                }.single()
+            }
+
+        val chromePlaceable =
+            chromeMeasurable.measure(Constraints.fixed(targetWidthPx, totalHeightPx))
+        val activityPlaceable =
+            activityMeasurable?.measure(Constraints.fixed(targetWidthPx, faceHeightPx))
+
+        val layoutWidth = targetWidthPx.coerceIn(constraints.minWidth, constraints.maxWidth)
+        val layoutHeight = totalHeightPx.coerceIn(constraints.minHeight, constraints.maxHeight)
+        val visualX = (layoutWidth - targetWidthPx) / 2
+        val visualY = (layoutHeight - totalHeightPx) / 2
+
+        layout(layoutWidth, layoutHeight) {
+            chromePlaceable.place(visualX, visualY)
+            contentPlaceable?.place(
+                x = visualX + ((targetWidthPx - contentPlaceable.width) / 2),
+                y = visualY + contentTopOffsetPx,
+            )
+            activityPlaceable?.place(visualX, visualY + contentTopOffsetPx)
         }
     }
 }
