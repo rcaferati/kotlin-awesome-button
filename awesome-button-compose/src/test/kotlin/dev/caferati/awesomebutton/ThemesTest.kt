@@ -93,17 +93,28 @@ class ThemesTest {
     }
 
     @Test
-    fun disabledPrecedesFlatAndRequestedVariant() {
+    fun flatStylingIsPreservedWhileDisabled() {
         val theme = getTheme(ThemeName.Basic)
 
         assertEquals(
-            ButtonVariant.Disabled,
+            ButtonVariant.Flat,
             resolveButtonType(theme, disabled = true, flat = true, ButtonVariant.Danger),
         )
         assertEquals(
             ButtonVariant.Flat,
-            resolveButtonType(theme, disabled = false, flat = true, ButtonVariant.Danger),
+            resolveButtonType(theme, disabled = true, flat = false, ButtonVariant.Flat),
         )
+        assertEquals(
+            ButtonVariant.Disabled,
+            resolveButtonType(theme, disabled = true, flat = false, ButtonVariant.Danger),
+        )
+        val disabledFlatStyle =
+            theme.buttons.getValue(
+                resolveButtonType(theme, disabled = true, flat = false, ButtonVariant.Flat),
+            )
+        assertEquals(0.dp, disabledFlatStyle.raiseLevel)
+        assertEquals(Color.Transparent, disabledFlatStyle.backgroundDarker)
+        assertEquals(Color.Transparent, disabledFlatStyle.backgroundShadow)
     }
 
     @Test

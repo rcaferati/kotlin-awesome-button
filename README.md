@@ -330,7 +330,7 @@ total shell height = face height + resolved raise amount
 | `name` | `ThemeName?` | `null` | Built-in theme name. |
 | `type` | `ButtonVariant` | `Primary` | Variant resolved from the selected theme. |
 | `size` | `ButtonSize` | `Medium` | Size preset resolved from the selected theme. |
-| `flat` | `Boolean` | `false` | Uses the theme flat variant when available. |
+| `flat` | `Boolean` | `false` | Uses the theme flat variant when available, including while disabled. |
 | `transparent` | `Boolean` | `false` | Clears themed face/depth/shadow/placeholder/border colors. |
 | `autoWidth` | `Boolean` | `false` | Lets themed buttons measure string labels instead of using theme width. |
 | `textTransitionSlotStaggerMillis` | `Int` | `7` | Milliseconds between character slots during text transitions. |

@@ -19,17 +19,18 @@ import androidx.compose.ui.unit.dp
 /**
  * Resolves a built-in or custom theme and delegates native interaction ownership to [AwesomeButton].
  *
- * Disabled styling overrides flat and requested variants. Explicit geometry and [style] values
- * precede variant, size, and fallback values. Reduced Motion snaps the wrapper's theme transition.
+ * Requested flat styling is preserved while disabled. Otherwise disabled styling overrides the
+ * requested variant. Explicit geometry and [style] values precede variant, size, and fallback
+ * values. Reduced Motion snaps the wrapper's theme transition.
  *
  * @param modifier modifier applied to the package-owned interaction surface.
  * @param child optional built-in string label.
  * @param config custom theme definition, taking precedence over [index] and [name].
  * @param index optional registered-theme index.
  * @param name optional registered-theme name.
- * @param type requested semantic or social variant.
+ * @param type requested semantic or social variant; [ButtonVariant.Flat] remains flat while disabled.
  * @param size named size preset.
- * @param flat whether the flat variant is requested when enabled.
+ * @param flat whether the flat visual variant is requested, including while disabled.
  * @param transparent whether resolved face/depth colors become transparent.
  * @param textTransition whether built-in string replacements use the staggered text effect.
  * @param textTransitionSlotStaggerMillis non-negative text-slot stagger in milliseconds.
@@ -334,10 +335,11 @@ internal fun resolveButtonType(
     flat: Boolean,
     type: ButtonVariant,
 ): ButtonVariant {
+    val flatRequested = flat || type == ButtonVariant.Flat
     val requestedType =
         when {
+            flatRequested -> ButtonVariant.Flat
             disabled -> ButtonVariant.Disabled
-            flat -> ButtonVariant.Flat
             else -> type
         }
     return if (theme.buttons.containsKey(requestedType)) requestedType else ButtonVariant.Primary
