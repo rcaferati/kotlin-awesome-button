@@ -1,11 +1,8 @@
 # Kotlin Awesome Button
 
-`awesome-button-compose` is the Android Jetpack Compose package for the
-Awesome Button component family.
-
-It provides material-independent 3D-style buttons with layered depth,
-progress flows, animated press and release behavior, placeholder loading
-states, auto/fixed/stretch sizing, text transitions, and built-in typed themes.
+`awesome-button-compose` brings the Awesome Button interaction, progress,
+sizing, and theme system to Android with native Jetpack Compose recomposition,
+coroutines, semantics, and animation behavior.
 
 The library exports:
 
@@ -22,26 +19,30 @@ The library exports:
   <tr>
     <td width="33%">
       <img
-        alt="Blue demo"
+        alt="Blue Awesome Button theme demo"
         src="https://raw.githubusercontent.com/rcaferati/kotlin-awesome-button/main/screenshots/demo-button-blue-new.gif"
       />
     </td>
     <td width="33%">
       <img
-        alt="Cartman demo"
+        alt="Cartman Awesome Button theme demo"
         src="https://raw.githubusercontent.com/rcaferati/kotlin-awesome-button/main/screenshots/demo-button-cartman.gif"
       />
     </td>
     <td width="33%">
       <img
-        alt="Rick demo"
+        alt="Rick Awesome Button theme demo"
         src="https://raw.githubusercontent.com/rcaferati/kotlin-awesome-button/main/screenshots/demo-button-rick.gif"
       />
     </td>
   </tr>
 </table>
 
-## Install
+## Figma File
+
+Explore the shared Awesome Button visual system in the [Figma design file](https://www.figma.com/file/Ug8sNPzmevU3ZQus9Klu5aHq/react-awesome-button-theme-blue). The Figma file is a visual design reference; this package's documentation defines its behavior, accessibility, and public API contract.
+
+## Installation
 
 Make sure the consuming app resolves dependencies from Maven Central:
 
@@ -98,27 +99,44 @@ AwesomeButton(
 }
 ```
 
-## Size Changes
+## Features
 
-Auto-width buttons animate between measured label sizes. Enable
-`textTransition` to use the native-style character transition during label
-changes.
+### Size Changes
+
+`animateSize` is enabled by default.
+
+- fixed `width` / `height` changes use the package's 175 ms size transition
+- `ThemedButton` size preset changes animate because they resolve to fixed
+  width and height updates
+- auto-width string labels grow and shrink from their measured target widths
+- `textTransition` uses Unicode grapheme clusters and a 7 ms slot stagger
+- without `textTransition`, wider labels wait until the target fits while
+  narrower labels replace before width shrinks
+- `animateSize = false` and Reduced Motion settle size and text immediately
+- fixed-to-auto and auto-to-fixed changes remain instant
 
 ```kotlin
-var expanded by remember { mutableStateOf(false) }
-val label = if (expanded) "View analytics dashboard" else "Launch"
+val label = if (isLong) "Open analytics dashboard" else "Open"
 
-AwesomeButton(
+ThemedButton(
     child = label,
+    name = ThemeName.Basic,
+    autoWidth = true,
     textTransition = true,
-    animateSize = true,
-    onPress = { expanded = !expanded },
+)
+
+ThemedButton(
+    child = label,
+    name = ThemeName.Basic,
+    autoWidth = true,
+    animateSize = false,
 )
 ```
 
-Use `width` for fixed width or `stretch = true` to fill the available width.
+Arbitrary Compose content remains single-composed in the rendered row. Use
+`width` for a fixed width or `stretch = true` to fill the available width.
 
-## Progress Buttons
+### Progress Buttons
 
 Set `progress = true` to route presses through the typed progress contract.
 Call `next?.invoke()` when the async work finishes.
@@ -155,7 +173,7 @@ typealias AwesomeButtonPressCallback = (AwesomeButtonNext?) -> Unit
 Set `showProgressBar = false` to hide only the traveling progress fill. The
 button still shows the activity indicator and keeps the progress lifecycle.
 
-## Themed Buttons
+### Themed Buttons
 
 `ThemedButton` resolves built-in theme, variant, and size values before
 delegating to `AwesomeButton`.
@@ -192,7 +210,7 @@ ThemedButton(
 )
 ```
 
-## Before / After / Extra Content
+### Before / After / Extra Content
 
 `before` and `after` render inline inside the content row. `extra` fills the
 face layer behind active/progress/content layers.
@@ -223,26 +241,23 @@ AwesomeButton(
 )
 ```
 
-## Transparent Buttons
+### Transparent Buttons
 
-Use `transparent = true` on `ThemedButton` to clear the face, depth, shadow,
-placeholder, and border theme colors. This is useful for flat navigation
-controls and disabled flat states.
+`transparent` is supported on `ThemedButton`. It removes the visible shell
+layers while preserving the content, hit target, and active/progress feedback.
 
 ```kotlin
 ThemedButton(
-    child = "Prev",
-    name = ThemeName.Basic,
-    type = ButtonVariant.Flat,
-    flat = true,
+    child = "Transparent",
+    name = ThemeName.Bruce,
+    type = ButtonVariant.Anchor,
     transparent = true,
-    onPress = { /* Navigate. */ },
 )
 ```
 
 ## Built-in Theme Contract
 
-Built-in themes:
+### Theme Names
 
 - `ThemeName.Basic`
 - `ThemeName.Bojack`
@@ -253,7 +268,7 @@ Built-in themes:
 - `ThemeName.Summer`
 - `ThemeName.Bruce`
 
-Built-in variants:
+### Variants
 
 - `ButtonVariant.Primary`
 - `ButtonVariant.Secondary`
@@ -261,57 +276,77 @@ Built-in variants:
 - `ButtonVariant.Danger`
 - `ButtonVariant.Disabled`
 - `ButtonVariant.Flat`
+- `ButtonVariant.X`
+- `ButtonVariant.Twitter`
+- `ButtonVariant.Messenger`
 - `ButtonVariant.Facebook`
 - `ButtonVariant.Github`
 - `ButtonVariant.Linkedin`
-- `ButtonVariant.Messenger`
-- `ButtonVariant.Pinterest`
-- `ButtonVariant.Reddit`
 - `ButtonVariant.Whatsapp`
-- `ButtonVariant.X`
+- `ButtonVariant.Reddit`
+- `ButtonVariant.Pinterest`
 - `ButtonVariant.Youtube`
-- `ButtonVariant.Twitter`
 
 `ButtonVariant.X` is preferred for new social examples. `ButtonVariant.Twitter`
 remains as a deprecated compatibility alias and resolves to the same built-in
 visual treatment.
 
-Built-in sizes:
+### Sizes
 
 - `ButtonSize.Icon`
 - `ButtonSize.Small`
 - `ButtonSize.Medium`
 - `ButtonSize.Large`
 
-Social variants are visual variants only. React/Vue social sharing wrappers are
-not part of the Android v1 package.
+Social variants are visual variants only; the package does not invoke Android
+sharing APIs.
 
-## Selected Parameters
+## API Reference
 
-### `AwesomeButton`
+The tables below cover the primary consumer-facing parameters. The generated
+Dokka documentation and checked-in
+[ABI dump](awesome-button-compose/api/awesome-button-compose.api) define the
+complete public Compose surface.
+
+### AwesomeButton
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
+| `modifier` | `Modifier` | `Modifier` | Modifier applied to the outer Compose surface. |
 | `child` | `String?` | `null` | Plain text label. A missing `child` and missing custom content render placeholder mode. |
-| `content` | `@Composable RowScope.() -> Unit` | `null` | Custom row content instead of a string label. |
+| `content` | `(@Composable RowScope.() -> Unit)?` | `null` | Custom row content instead of a string label. |
 | `onPress` | `AwesomeButtonPressCallback?` | `null` | Press handler. Receives `AwesomeButtonNext` only when `progress = true`. |
 | `onLongPress` | `(() -> Unit)?` | `null` | Optional long-press handler. |
 | `disabled` | `Boolean` | `false` | Blocks pointer, keyboard, and accessibility activation. |
 | `width` | `Dp?` | `null` | Fixed width. When omitted, the button measures content unless `stretch = true`. |
 | `height` | `Dp` | `52.dp` | Interactive face height before the raise/depth layer. Total shell height equals face height plus the resolved raise amount. |
+| `paddingHorizontal` | `Dp?` | `16.dp` resolved | Horizontal content padding. |
+| `paddingTop` | `Dp?` | `0.dp` resolved | Additional top content padding. |
+| `paddingBottom` | `Dp?` | `0.dp` resolved | Additional bottom content padding. |
+| `before` | `(@Composable RowScope.() -> Unit)?` | `null` | Content rendered before the primary label inside the face. |
+| `after` | `(@Composable RowScope.() -> Unit)?` | `null` | Content rendered after the primary label inside the face. |
+| `extra` | `(@Composable BoxScope.() -> Unit)?` | `null` | Content rendered behind the active/content layers. |
 | `stretch` | `Boolean` | `false` | Fill available width. |
 | `style` | `AwesomeButtonStyle?` | `null` | Visual style overrides. |
+| `activeOpacity` | `Float` | `1f` | Opacity applied while a non-progress button is pressed. |
+| `debouncedPressTimeMillis` | `Long` | `0` | Debounces accepted `onPress` dispatches in milliseconds. |
 | `pressInAnimationDurationMillis` | `Int?` | `null` | Optional press-down override. When absent, `style.animationDurationMillis` and then the 140 ms package fallback apply. |
 | `progress` | `Boolean` | `false` | Enables progress lifecycle and spinner transition. |
-| `showProgressBar` | `Boolean` | `true` | Hides only the progress fill when false. |
+| `showProgressBar` | `Boolean` | `true` | Shows or hides the progress fill. The spinner, busy state, callbacks, and completion handle remain active when false. |
 | `progressLoadingTimeMillis` | `Int` | `3000` | Fill travel duration before completion. |
-| `animateSize` | `Boolean` | `true` | Animates width/height changes. |
+| `animateSize` | `Boolean` | `true` | Animates fixed geometry and auto-width string-label changes. |
 | `textTransition` | `Boolean` | `false` | Animates text changes through the native-style character transition. |
 | `textTransitionSlotStaggerMillis` | `Int` | `7` | Milliseconds between character slots during text transitions. |
 | `animatedPlaceholder` | `Boolean` | `true` | Enables placeholder shimmer when in placeholder mode. |
 | `accessibilityLabel` | `String?` | `null` | Spoken identity override. Plain text and meaningful custom-content semantics are inferred when absent. |
 | `accessibilityHint` | `String?` | `null` | Label for the ordinary Compose semantic click action. It is not added to the spoken identity or state. |
 | `accessibilityLongPressLabel` | `String?` | `null` | Spoken semantic long-action name. The package-localized default is “Long press.” |
+| `onPressIn` | `(() -> Unit)?` | `null` | Fires when an eligible pointer gesture arms. |
+| `onPressOut` | `(() -> Unit)?` | `null` | Fires after release or cancellation owns the terminal outcome. |
+| `onPressedIn` | `(() -> Unit)?` | `null` | Fires after pressed state is committed. |
+| `onPressedOut` | `(() -> Unit)?` | `null` | Fires after the captured release transition settles. |
+| `onProgressStart` | `(() -> Unit)?` | `null` | Fires when accepted progress begins. |
+| `onProgressEnd` | `(() -> Unit)?` | `null` | Fires after accepted progress completion settles. |
 
 For example, a `height` of `52.dp` with a resolved raise amount of `6.dp`
 produces a total shell height of `58.dp`:
@@ -321,7 +356,10 @@ total shell height = face height + resolved raise amount
 58.dp = 52.dp + 6.dp
 ```
 
-### `ThemedButton`
+### ThemedButton
+
+`ThemedButton` accepts the `AwesomeButton` parameters plus these
+theme-resolution parameters.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -336,7 +374,7 @@ total shell height = face height + resolved raise amount
 | `textTransitionSlotStaggerMillis` | `Int` | `7` | Milliseconds between character slots during text transitions. |
 | `style` | `AwesomeButtonStyle?` | `null` | Explicit overrides applied after theme, size, and variant resolution. |
 
-## Interaction, Theme, and Numeric Contract
+## Interaction and Lifecycle
 
 Callback/configuration replacements committed during a hold are live, while
 release and progress-completion callbacks are captured when their transition
@@ -346,20 +384,16 @@ transition, and removal terminate once without activation. Atomic keyboard and
 semantic activation shares debounce and progress ownership without fabricating
 pointer-only lifecycle callbacks.
 
-Disabled styling wins over flat and the requested variant. Explicit dimensions
-and style values win over variant, then size, then package fallback. Width
-resolves stretch, fixed width, auto width, variant, size, fallback; height
-resolves explicit, variant, size, fallback. The themed wrapper owns its 200 ms
-variant interpolation and the inner button does not apply a second style
-animation. Other direct resolved-style changes use
-`style.animationDurationMillis`; theme-source and transparency changes snap.
+Requested flat styling is preserved while disabled; otherwise disabled styling
+overrides the requested variant. Explicit dimensions and style values win over
+variant, then size, then package fallback. Width resolves stretch, fixed width,
+auto width, variant, size, fallback; height resolves explicit, variant, size,
+fallback. The themed wrapper owns its 200 ms variant interpolation and the inner
+button does not apply a second style animation. Other direct resolved-style
+changes use `style.animationDurationMillis`; theme-source and transparency
+changes snap.
 
-Numeric inputs are normalized before Compose layout or animation consumes
-them. Non-finite optional values act as absent, non-finite required values use
-their declared defaults, negative dimensions/durations clamp to zero, and
-opacity clamps to `[0, 1]`. Fixed width zero remains explicit.
-
-## Accessibility and System Adaptation
+## Accessibility, Reduced Motion, and Numeric Validation
 
 `AwesomeButton` and `ThemedButton` expose one Compose button semantics node.
 Ordinary semantic activation and semantic long activation are atomic actions:
@@ -378,7 +412,34 @@ effects snap while callback ordering, debounce, long-press thresholds, and
 progress-handle ownership remain unchanged. Package-owned spoken state/action
 strings are Android resources and may be localized by adding resource locales.
 
+Numeric inputs are normalized before Compose layout or animation consumes
+them. Non-finite optional values act as absent, non-finite required values use
+their declared defaults, negative dimensions and durations clamp to zero, and
+opacity clamps to `[0, 1]`. Fixed width zero remains explicit.
+
+## Android and Compose
+
+The package targets Android Jetpack Compose and follows Compose ownership for
+recomposition, remembered state, structured coroutine cancellation, pointer
+and key input, and semantics. Android View/XML widgets and Compose
+Multiplatform targets are not part of the `1.0.0` package surface.
+
 ## Development
+
+Run the package release preflight from the repository root:
+
+```bash
+AWESOME_BUTTON_SKIP_MANAGED_DEVICE=1 scripts/release-preflight.sh
+```
+
+The gate validates formatting, JVM tests, ABI compatibility, lint, Dokka,
+Kover reports, instrumentation assembly, release assembly, and publication
+shape. Android instrumentation runtime evidence remains pending when no device
+or managed emulator is available. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md), [`ABI_REVIEW.md`](ABI_REVIEW.md), and
+[`PERFORMANCE.md`](PERFORMANCE.md) for review and evidence policies.
+
+Focused iteration commands include:
 
 ```bash
 ./gradlew :awesome-button-compose:testDebugUnitTest
@@ -387,7 +448,7 @@ strings are Android resources and may be localized by adding resource locales.
 ./gradlew :demo:assembleDebug
 ```
 
-## Publishing
+### Publishing
 
 Publication is configured for Maven Central through Sonatype Central Portal.
 The released artifact is:
@@ -424,7 +485,7 @@ Release publication:
 
 See [RELEASING.md](RELEASING.md) for the full checklist.
 
-## Demo App
+## Demo Application
 
 The `demo` module contains the Android parity demo:
 
@@ -439,11 +500,23 @@ Build it with:
 ./gradlew :demo:assembleDebug
 ```
 
+## Awesome Button Family
+
+Awesome Button is maintained as four native packages that share product
+semantics while following each platform's implementation model:
+
+- [React Native Awesome Button](https://github.com/rcaferati/react-native-awesome-button)
+- [Flutter Awesome Button](https://github.com/rcaferati/flutter_awesome_button)
+- [Kotlin Awesome Button](https://github.com/rcaferati/kotlin-awesome-button)
+- [Swift Awesome Button](https://github.com/rcaferati/swift-awesome-button)
+
 ## Author
 
-Rafael Caferati
+Created and maintained by [Rafael Caferati](https://caferati.dev).
 
-- GitHub: [@rcaferati](https://github.com/rcaferati)
+- [GitHub](https://github.com/rcaferati)
+- [LinkedIn](https://linkedin.com/in/rcaferati)
+- [Instagram](https://instagram.com/rcaferati)
 
 ## License
 
