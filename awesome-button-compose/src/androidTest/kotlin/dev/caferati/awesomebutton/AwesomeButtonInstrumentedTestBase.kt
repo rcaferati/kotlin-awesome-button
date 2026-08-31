@@ -9,6 +9,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertTrue
@@ -32,6 +33,24 @@ abstract class AwesomeButtonInstrumentedTestBase {
         }
     }
 
+    protected fun pressButtonDown() {
+        composeRule.onNodeWithTag("AwesomeButton").performTouchInput {
+            down(center)
+        }
+    }
+
+    protected fun releaseButton() {
+        composeRule.onNodeWithTag("AwesomeButton").performTouchInput {
+            up()
+        }
+    }
+
+    protected fun releaseTouchOnRoot() {
+        composeRule.onRoot().performTouchInput {
+            up()
+        }
+    }
+
     protected fun nodeWidth(tag: String): Float {
         val bounds = composeRule.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
         return bounds.right.value - bounds.left.value
@@ -40,6 +59,16 @@ abstract class AwesomeButtonInstrumentedTestBase {
     protected fun nodeCenterX(tag: String): Float {
         val bounds = composeRule.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
         return (bounds.left.value + bounds.right.value) / 2f
+    }
+
+    protected fun nodeHeight(tag: String): Float {
+        val bounds = composeRule.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        return bounds.bottom.value - bounds.top.value
+    }
+
+    protected fun nodeCenterY(tag: String): Float {
+        val bounds = composeRule.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        return (bounds.top.value + bounds.bottom.value) / 2f
     }
 
     protected fun textCenterX(text: String): Float {
@@ -56,8 +85,7 @@ abstract class AwesomeButtonInstrumentedTestBase {
             .fetchSemanticsNode()
             .config[key]
 
-    protected fun buttonImageWidth(): Int =
-        composeRule.onNodeWithTag("AwesomeButton").captureToImage().width
+    protected fun buttonImageWidth(): Int = composeRule.onNodeWithTag("AwesomeButton").captureToImage().width
 
     protected fun autoWidthTestStyle(animationDurationMillis: Int? = null): AwesomeButtonStyle =
         AwesomeButtonStyle(

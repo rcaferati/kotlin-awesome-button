@@ -1,15 +1,8 @@
 package dev.caferati.awesomebutton.demo
 
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.caferati.awesomebutton.AwesomeButtonStyle
 import dev.caferati.awesomebutton.ButtonSize
 import dev.caferati.awesomebutton.ButtonVariant
@@ -74,12 +67,12 @@ internal fun ProgressScreen(modifier: Modifier = Modifier) {
                     progress = true,
                     style = AwesomeButtonStyle(borderRadius = 30.dp, raiseAmount = 6.dp),
                     onPress = delayedCompletion(scope, 1000),
+                    accessibilityLabel = "Send",
                     content = {
-                        Icon(
-                            imageVector = Icons.Filled.Send,
-                            contentDescription = null,
+                        DemoIcon(
+                            asset = DemoIconAsset.LocationArrow,
                             tint = buttonTextColor(themeName, ButtonVariant.Anchor),
-                            modifier = Modifier.size(24.dp),
+                            size = 24.dp,
                         )
                     },
                 )
@@ -92,12 +85,12 @@ internal fun ProgressScreen(modifier: Modifier = Modifier) {
                     progress = true,
                     style = AwesomeButtonStyle(borderRadius = 30.dp, raiseAmount = 0.dp),
                     onPress = delayedCompletion(scope, 1000),
+                    accessibilityLabel = "Facebook",
                     content = {
-                        Text(
-                            text = "f",
-                            color = buttonTextColor(themeName, ButtonVariant.Secondary),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
+                        DemoIcon(
+                            asset = DemoIconAsset.Facebook,
+                            tint = buttonTextColor(themeName, ButtonVariant.Secondary),
+                            size = 24.dp,
                         )
                     },
                 )

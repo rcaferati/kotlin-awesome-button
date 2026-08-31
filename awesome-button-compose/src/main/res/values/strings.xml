@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="awesome_button_busy_state">In progress</string>
+    <string name="awesome_button_long_press_action">Long press</string>
+    <string name="awesome_button_placeholder_state">Unavailable</string>
+</resources>

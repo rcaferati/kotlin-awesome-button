@@ -1,5 +1,8 @@
 package dev.caferati.awesomebutton.demo
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
@@ -26,18 +29,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,13 +46,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import dev.caferati.awesomebutton.AwesomeButtonStyle
 import dev.caferati.awesomebutton.ButtonSize
 import dev.caferati.awesomebutton.ButtonVariant
@@ -64,12 +65,12 @@ import kotlinx.coroutines.delay
 
 private enum class DemoTab(
     val label: String,
-    val icon: ImageVector,
+    val icon: DemoIconAsset,
 ) {
-    Themed("Themed", Icons.Filled.Home),
-    Progress("Progress", Icons.Filled.Refresh),
-    Social("Social", Icons.Filled.Share),
-    SizeChanges("Size Changes", Icons.Filled.Settings),
+    Themed("Themed", DemoIconAsset.Paintbrush),
+    Progress("Progress", DemoIconAsset.Gauge),
+    Social("Social", DemoIconAsset.ShareNodes),
+    SizeChanges("Size Changes", DemoIconAsset.SizeChanges),
 }
 
 private enum class ThemedHeaderDirection {
@@ -158,7 +159,13 @@ internal fun DemoShell() {
                     NavigationBarItem(
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = null) },
+                        icon = {
+                            DemoIcon(
+                                asset = tab.icon,
+                                tint = LocalContentColor.current,
+                                size = 21.dp,
+                            )
+                        },
                         label = { Text(tab.label) },
                     )
                 }
@@ -194,6 +201,8 @@ private fun ThemedStackHost(
 
 @Composable
 private fun StaticHeaderBar(title: String) {
+    UpdateStatusBarIconAppearance(SecondaryHeaderColor)
+
     val density = LocalDensity.current
     val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
 
@@ -238,6 +247,8 @@ private fun ThemedHeaderBar(
         animationSpec = tween(durationMillis = 240),
         label = "themed-header-foreground",
     )
+    UpdateStatusBarIconAppearance(backgroundColor)
+
     val density = LocalDensity.current
     val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
 
@@ -303,6 +314,26 @@ private fun ThemedHeaderBar(
         }
     }
 }
+
+@Composable
+private fun UpdateStatusBarIconAppearance(backgroundColor: Color) {
+    val view = LocalView.current
+    val activity = remember(view.context) { view.context.findActivity() }
+    val useDarkIcons = backgroundColor.luminance() > 0.179f
+
+    SideEffect {
+        activity?.let {
+            WindowCompat.getInsetsController(it.window, view).isAppearanceLightStatusBars = useDarkIcons
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
 private fun themedStackContentTransform(direction: ThemedHeaderDirection): ContentTransform {
     val animationSpec = tween<IntOffset>(durationMillis = ThemedStackTransitionDurationMillis)

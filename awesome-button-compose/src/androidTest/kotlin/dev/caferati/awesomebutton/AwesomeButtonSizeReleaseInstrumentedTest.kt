@@ -39,13 +39,16 @@ class AwesomeButtonSizeReleaseInstrumentedTest : AwesomeButtonInstrumentedTestBa
                 expanded = true
             }
             composeRule.mainClock.advanceTimeByFrame()
-            composeRule.mainClock.advanceTimeBy(SizeAnimationDurationMillis / 2L)
+            composeRule.mainClock.advanceTimeBy(SIZE_ANIMATION_DURATION_MILLIS / 2L)
             val midpointWidth = buttonImageWidth()
 
-            composeRule.mainClock.advanceTimeBy(SizeAnimationDurationMillis.toLong())
+            composeRule.mainClock.advanceTimeBy(SIZE_ANIMATION_DURATION_MILLIS.toLong())
             val endWidth = buttonImageWidth()
 
-            assertTrue("expected midpoint width to be between endpoints", midpointWidth in (startWidth + 1) until endWidth)
+            assertTrue(
+                "expected midpoint width to be between endpoints",
+                midpointWidth in (startWidth + 1) until endWidth,
+            )
         } finally {
             composeRule.mainClock.autoAdvance = true
         }
@@ -68,24 +71,27 @@ class AwesomeButtonSizeReleaseInstrumentedTest : AwesomeButtonInstrumentedTestBa
             composeRule.onNodeWithTag("AwesomeButton").performClick()
             composeRule.mainClock.advanceTimeByFrame()
 
-            var minimumGeometryPress = semanticsFloat("AwesomeButtonFace", AwesomeButtonGeometryPressProgressKey)
-            var minimumVisualPress = semanticsFloat("AwesomeButtonFace", AwesomeButtonVisualPressProgressKey)
+            var minimumGeometryPress = semanticsFloat("AwesomeButtonFace", awesomeButtonGeometryPressProgressKey)
+            var minimumVisualPress = semanticsFloat("AwesomeButtonFace", awesomeButtonVisualPressProgressKey)
             repeat(24) {
                 composeRule.mainClock.advanceTimeByFrame()
                 minimumGeometryPress =
                     minOf(
                         minimumGeometryPress,
-                        semanticsFloat("AwesomeButtonFace", AwesomeButtonGeometryPressProgressKey),
+                        semanticsFloat("AwesomeButtonFace", awesomeButtonGeometryPressProgressKey),
                     )
                 minimumVisualPress =
                     minOf(
                         minimumVisualPress,
-                        semanticsFloat("AwesomeButtonFace", AwesomeButtonVisualPressProgressKey),
+                        semanticsFloat("AwesomeButtonFace", awesomeButtonVisualPressProgressKey),
                     )
             }
 
             assertTrue("expected release geometry to overshoot upward", minimumGeometryPress < -0.01f)
-            assertTrue("expected geometry overshoot to stay bounded", minimumGeometryPress >= ReleaseGeometryPressProgressFloor)
+            assertTrue(
+                "expected geometry overshoot to stay bounded",
+                minimumGeometryPress >= RELEASE_GEOMETRY_PRESS_PROGRESS_FLOOR,
+            )
             assertTrue("expected visual press progress to stay clamped", minimumVisualPress >= 0f)
         } finally {
             composeRule.mainClock.autoAdvance = true
@@ -111,12 +117,12 @@ class AwesomeButtonSizeReleaseInstrumentedTest : AwesomeButtonInstrumentedTestBa
         try {
             composeRule.onNodeWithTag("AwesomeButton").performClick()
             composeRule.mainClock.advanceTimeByFrame()
-            composeRule.mainClock.advanceTimeBy(ReleaseSpringSettleDurationMillis / 2L)
+            composeRule.mainClock.advanceTimeBy(RELEASE_SPRING_SETTLE_DURATION_MILLIS / 2L)
             composeRule.runOnIdle {
                 assertEquals(0, pressedOutCalls)
             }
 
-            composeRule.mainClock.advanceTimeBy(ReleaseSpringSettleDurationMillis / 2L + 1)
+            composeRule.mainClock.advanceTimeBy(RELEASE_SPRING_SETTLE_DURATION_MILLIS / 2L + 1)
             composeRule.runOnIdle {
                 assertEquals(1, pressedOutCalls)
             }
@@ -148,12 +154,12 @@ class AwesomeButtonSizeReleaseInstrumentedTest : AwesomeButtonInstrumentedTestBa
             composeRule.runOnIdle {
                 label = "Launch"
             }
-            composeRule.mainClock.advanceTimeBy(ReleaseSpringSettleDurationMillis / 2L)
+            composeRule.mainClock.advanceTimeBy(RELEASE_SPRING_SETTLE_DURATION_MILLIS / 2L)
 
             composeRule.onNodeWithText("View analytics dashboard").assertIsDisplayed()
             assertClose(startWidth.toFloat(), buttonImageWidth().toFloat(), tolerance = 2f)
 
-            composeRule.mainClock.advanceTimeBy(ReleaseSpringSettleDurationMillis / 2L + 1_200)
+            composeRule.mainClock.advanceTimeBy(RELEASE_SPRING_SETTLE_DURATION_MILLIS / 2L + 1_200)
             composeRule.onNodeWithText("Launch").assertIsDisplayed()
             assertTrue("expected auto-width button to shrink after release", buttonImageWidth() < startWidth)
         } finally {

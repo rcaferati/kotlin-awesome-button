@@ -1,0 +1,2 @@
+# Binary Compatibility Validator emits one intentional blank line at EOF.
+awesome-button-compose/api/*.api whitespace=-blank-at-eof

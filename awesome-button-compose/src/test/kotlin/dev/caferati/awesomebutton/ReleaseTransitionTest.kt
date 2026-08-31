@@ -7,13 +7,13 @@ import kotlin.math.sqrt
 class ReleaseTransitionTest {
     @Test
     fun releaseConstantsMatchSwift() {
-        assertEquals(280f, ReleaseSpringStiffness, 0f)
-        assertEquals(20f, ReleaseSpringDamping, 0f)
-        assertEquals(240, ReleaseSpringSettleDurationMillis)
-        assertEquals(-0.25f, ReleaseGeometryPressProgressFloor, 0f)
+        assertEquals(280f, RELEASE_SPRING_STIFFNESS, 0f)
+        assertEquals(20f, RELEASE_SPRING_DAMPING, 0f)
+        assertEquals(240, RELEASE_SPRING_SETTLE_DURATION_MILLIS)
+        assertEquals(-0.25f, RELEASE_GEOMETRY_PRESS_PROGRESS_FLOOR, 0f)
         assertEquals(
             20f / (2f * sqrt(280f)),
-            ReleaseSpringDampingRatio,
+            releaseSpringDampingRatio,
             0.0001f,
         )
     }

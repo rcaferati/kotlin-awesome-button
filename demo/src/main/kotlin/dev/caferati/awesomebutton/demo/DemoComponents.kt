@@ -9,13 +9,9 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -23,8 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -174,6 +168,7 @@ internal fun DemoThemedTextButton(
     before: (@Composable RowScope.() -> Unit)? = null,
     after: (@Composable RowScope.() -> Unit)? = null,
     extra: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    accessibilityLabel: String? = null,
 ) {
     ThemedButton(
         child = child,
@@ -200,6 +195,7 @@ internal fun DemoThemedTextButton(
         before = before,
         after = after,
         extra = extra,
+        accessibilityLabel = accessibilityLabel,
     )
 }
 
@@ -207,19 +203,21 @@ internal fun DemoThemedTextButton(
 internal fun FlatIconButton(
     themeName: ThemeName,
     color: Color,
-    imageVector: ImageVector = Icons.Filled.SwapHoriz,
+    asset: DemoIconAsset,
+    accessibilityLabel: String,
     action: () -> Unit,
 ) {
     ThemedButton(
         name = themeName,
         type = ButtonVariant.Flat,
         size = ButtonSize.Icon,
+        accessibilityLabel = accessibilityLabel,
         onPress = { action() },
         content = {
-            Icon(
-                imageVector = imageVector,
-                contentDescription = null,
+            DemoIcon(
+                asset = asset,
                 tint = color,
+                size = 18.dp,
             )
         },
     )
@@ -272,49 +270,6 @@ internal fun TextDemoButton(
         textTransitionSlotStaggerMillis = textTransitionSlotStaggerMillis,
         autoWidth = true,
         animateSize = animateSize,
-    )
-}
-
-internal enum class SocialBrand(
-    val drawableRes: Int,
-) {
-    Facebook(R.drawable.ic_brand_facebook),
-    X(R.drawable.ic_brand_x),
-    Messenger(R.drawable.ic_brand_messenger),
-    Instagram(R.drawable.ic_brand_instagram),
-    Whatsapp(R.drawable.ic_brand_whatsapp),
-    Youtube(R.drawable.ic_brand_youtube),
-    Linkedin(R.drawable.ic_brand_linkedin),
-    Pinterest(R.drawable.ic_brand_pinterest),
-}
-
-@Composable
-internal fun SocialBrandIcon(
-    brand: SocialBrand,
-    color: Color = Color.White,
-    size: Dp = 21.dp,
-    modifier: Modifier = Modifier,
-) {
-    Icon(
-        painter = painterResource(brand.drawableRes),
-        contentDescription = null,
-        tint = color,
-        modifier = modifier.size(size),
-    )
-}
-
-@Composable
-internal fun SocialBrandIconPadded(
-    brand: SocialBrand,
-    color: Color = Color.White,
-    size: Dp = 21.dp,
-    trailingPadding: Dp = 0.dp,
-) {
-    SocialBrandIcon(
-        brand = brand,
-        color = color,
-        size = size,
-        modifier = Modifier.padding(end = trailingPadding),
     )
 }
 

@@ -3,55 +3,80 @@ package dev.caferati.awesomebutton
 import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.PointerId
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.roundToInt
+import kotlinx.coroutines.yield
 
+/**
+ * Renders an Awesome Button using native Compose layout and interaction ownership.
+ *
+ * Empty [child] and absent [content] render the non-interactive placeholder. Reduced Motion snaps
+ * visual effects while retaining gesture thresholds, debounce, progress ownership, state order,
+ * and completion callbacks.
+ *
+ * @param modifier modifier applied to the package-owned interaction surface.
+ * @param child optional built-in string label; use [content] for arbitrary Compose content.
+ * @param onPress activation callback; progress buttons receive a one-shot completion handle.
+ * @param onLongPress optional long-press action using the platform gesture threshold.
+ * @param disabled whether the button rejects and cancels interaction ownership.
+ * @param width optional fixed face width in density-independent pixels; null uses intrinsic width.
+ * @param height height of the interactive face before the resolved raise/depth layer is added. The
+ * total shell height is `height + resolved raise amount`.
+ * @param paddingHorizontal optional horizontal content padding in density-independent pixels.
+ * @param paddingTop optional top content padding in density-independent pixels.
+ * @param paddingBottom optional bottom content padding in density-independent pixels.
+ * @param before leading content included in intrinsic-width measurement.
+ * @param after trailing content included in intrinsic-width measurement.
+ * @param extra face overlay excluded from intrinsic-width measurement.
+ * @param stretch whether width fills the available horizontal constraints.
+ * @param style visual overrides applied after theme values.
+ * @param activeOpacity pressed opacity normalized to the inclusive range zero through one.
+ * @param debouncedPressTimeMillis non-negative interval between accepted activations.
+ * @param progress whether activation uses one-shot progress completion ownership.
+ * @param showProgressBar whether busy state renders the progress layer.
+ * @param progressLoadingTimeMillis non-negative progress fill duration in milliseconds.
+ * @param animateSize whether supported content-driven size changes animate.
+ * @param textTransition whether built-in string changes use the staggered text effect.
+ * @param textTransitionSlotStaggerMillis non-negative text-slot stagger in milliseconds.
+ * @param animatedPlaceholder whether the placeholder shimmer animates when motion is allowed.
+ * @param pressInAnimationDurationMillis optional non-negative press-down duration override.
+ * @param accessibilityLabel explicit accessible name; string labels are inferred when absent.
+ * @param accessibilityHint optional localized assistive usage hint.
+ * @param accessibilityLongPressLabel optional localized long-press action label.
+ * @param onPressIn callback dispatched when a pointer arms this gesture.
+ * @param onPressOut callback dispatched after a release or cancellation terminal is claimed.
+ * @param onPressedIn callback dispatched synchronously after pressed state is committed.
+ * @param onPressedOut callback captured when the release transition begins and dispatched on settle.
+ * @param onProgressStart callback dispatched when accepted progress begins.
+ * @param onProgressEnd callback captured when progress completion begins and dispatched on settle.
+ * @param content optional arbitrary primary content included in intrinsic-width measurement.
+ */
 @Composable
-fun AwesomeButton(
+public fun AwesomeButton(
     modifier: Modifier = Modifier,
     child: String? = null,
     onPress: AwesomeButtonPressCallback? = null,
@@ -74,8 +99,12 @@ fun AwesomeButton(
     progressLoadingTimeMillis: Int = 3000,
     animateSize: Boolean = true,
     textTransition: Boolean = false,
-    textTransitionSlotStaggerMillis: Int = DefaultTextTransitionSlotStaggerMillis,
+    textTransitionSlotStaggerMillis: Int = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS,
     animatedPlaceholder: Boolean = true,
+    pressInAnimationDurationMillis: Int? = null,
+    accessibilityLabel: String? = null,
+    accessibilityHint: String? = null,
+    accessibilityLongPressLabel: String? = null,
     onPressIn: (() -> Unit)? = null,
     onPressOut: (() -> Unit)? = null,
     onPressedIn: (() -> Unit)? = null,
@@ -83,12 +112,131 @@ fun AwesomeButton(
     onProgressStart: (() -> Unit)? = null,
     onProgressEnd: (() -> Unit)? = null,
     content: (@Composable RowScope.() -> Unit)? = null,
+): Unit =
+    AwesomeButtonImpl(
+        modifier = modifier,
+        child = child,
+        onPress = onPress,
+        onLongPress = onLongPress,
+        disabled = disabled,
+        width = width,
+        height = height,
+        paddingHorizontal = paddingHorizontal,
+        paddingTop = paddingTop,
+        paddingBottom = paddingBottom,
+        before = before,
+        after = after,
+        extra = extra,
+        stretch = stretch,
+        style = style,
+        activeOpacity = activeOpacity,
+        debouncedPressTimeMillis = debouncedPressTimeMillis,
+        progress = progress,
+        showProgressBar = showProgressBar,
+        progressLoadingTimeMillis = progressLoadingTimeMillis,
+        animateSize = animateSize,
+        textTransition = textTransition,
+        textTransitionSlotStaggerMillis = textTransitionSlotStaggerMillis,
+        animatedPlaceholder = animatedPlaceholder,
+        pressInAnimationDurationMillis = pressInAnimationDurationMillis,
+        accessibilityLabel = accessibilityLabel,
+        accessibilityHint = accessibilityHint,
+        accessibilityLongPressLabel = accessibilityLongPressLabel,
+        onPressIn = onPressIn,
+        onPressOut = onPressOut,
+        onPressedIn = onPressedIn,
+        onPressedOut = onPressedOut,
+        onProgressStart = onProgressStart,
+        onProgressEnd = onProgressEnd,
+        content = content,
+    )
+
+@Composable
+internal fun AwesomeButtonImpl(
+    modifier: Modifier = Modifier,
+    child: String? = null,
+    onPress: AwesomeButtonPressCallback? = null,
+    onLongPress: (() -> Unit)? = null,
+    disabled: Boolean = false,
+    width: Dp? = null,
+    height: Dp = 52.dp,
+    paddingHorizontal: Dp? = null,
+    paddingTop: Dp? = null,
+    paddingBottom: Dp? = null,
+    before: (@Composable RowScope.() -> Unit)? = null,
+    after: (@Composable RowScope.() -> Unit)? = null,
+    extra: (@Composable BoxScope.() -> Unit)? = null,
+    stretch: Boolean = false,
+    style: AwesomeButtonStyle? = null,
+    activeOpacity: Float = 1f,
+    debouncedPressTimeMillis: Long = 0,
+    progress: Boolean = false,
+    showProgressBar: Boolean = true,
+    progressLoadingTimeMillis: Int = 3000,
+    animateSize: Boolean = true,
+    textTransition: Boolean = false,
+    textTransitionSlotStaggerMillis: Int = DEFAULT_TEXT_TRANSITION_SLOT_STAGGER_MILLIS,
+    animatedPlaceholder: Boolean = true,
+    pressInAnimationDurationMillis: Int? = null,
+    accessibilityLabel: String? = null,
+    accessibilityHint: String? = null,
+    accessibilityLongPressLabel: String? = null,
+    onPressIn: (() -> Unit)? = null,
+    onPressOut: (() -> Unit)? = null,
+    onPressedIn: (() -> Unit)? = null,
+    onPressedOut: (() -> Unit)? = null,
+    onProgressStart: (() -> Unit)? = null,
+    onProgressEnd: (() -> Unit)? = null,
+    content: (@Composable RowScope.() -> Unit)? = null,
+    styleIsResolvedFrame: Boolean = false,
+    sizeTargetStyle: AwesomeButtonStyle? = null,
+    reduceMotionOverride: Boolean? = null,
 ) {
-    val targetStyle = resolvedVisualStyle(AwesomeButtonTheme.current.style.merge(style))
-    val fallback = AwesomeButtonThemeData.fallbackStyle
-    val isPlaceholder = child == null && content == null
-    val effectiveDisabled = disabled || isPlaceholder
     val scope = rememberCoroutineScope()
+    val systemReduceMotion = rememberAwesomeButtonReduceMotion()
+    val reduceMotion = reduceMotionOverride ?: systemReduceMotion
+    val busyStateDescription = stringResource(R.string.awesome_button_busy_state)
+    val defaultLongPressLabel = stringResource(R.string.awesome_button_long_press_action)
+    val density = LocalDensity.current
+    val presentation =
+        resolveAwesomeButtonPresentation(
+            AwesomeButtonPresentationInput(
+                themeStyle = AwesomeButtonTheme.current.style,
+                style = style,
+                styleIsResolvedFrame = styleIsResolvedFrame,
+                sizeTargetStyle = sizeTargetStyle,
+                childPresent = child != null,
+                customContentPresent = content != null,
+                beforePresent = before != null,
+                afterPresent = after != null,
+                disabled = disabled,
+                width = width,
+                height = height,
+                paddingHorizontal = paddingHorizontal,
+                paddingTop = paddingTop,
+                paddingBottom = paddingBottom,
+                stretch = stretch,
+                activeOpacity = activeOpacity,
+                debouncedPressTimeMillis = debouncedPressTimeMillis,
+                progressLoadingTimeMillis = progressLoadingTimeMillis,
+                pressInAnimationDurationMillis = pressInAnimationDurationMillis,
+                reduceMotion = reduceMotion,
+                busyStateDescription = busyStateDescription,
+                defaultLongPressLabel = defaultLongPressLabel,
+                density = density,
+                fontScale = density.fontScale,
+            ),
+        )
+    val targetStyle = presentation.targetStyle
+    val fallback = presentation.fallbackStyle
+    val normalizedWidth = presentation.normalizedWidth
+    val normalizedHeight = presentation.normalizedHeight
+    val normalizedActiveOpacity = presentation.activeOpacity
+    val normalizedDebounceMillis = presentation.debounceMillis
+    val normalizedProgressLoadingMillis = presentation.progressLoadingMillis
+    val normalizedPressInDurationMillis = presentation.pressInDurationMillis
+    val isPlaceholder = presentation.isPlaceholder
+    val effectiveDisabled = presentation.effectiveDisabled
 
     val styleTransitionProgress = remember { Animatable(1f) }
     var styleTransitionSource by remember { mutableStateOf(targetStyle) }
@@ -100,46 +248,25 @@ fun AwesomeButton(
             styleTransitionTarget,
             styleTransitionProgress.value,
         )
-    val contentPaddingHorizontal = paddingHorizontal ?: 16.dp
-    val contentPaddingTop = paddingTop ?: 0.dp
-    val contentPaddingBottom = paddingBottom ?: 0.dp
+    val contentPaddingHorizontal = presentation.paddingHorizontal
+    val contentPaddingTop = presentation.paddingTop
+    val contentPaddingBottom = presentation.paddingBottom
     val contentGap = resolvedStyle.contentGap ?: fallback.contentGap!!
-    val targetTextStyle =
-        TextStyle(
-            color = Color.Unspecified,
-            fontSize = targetStyle.textSize ?: fallback.textSize!!,
-            lineHeight = targetStyle.textLineHeight ?: fallback.textLineHeight!!,
-            fontFamily = targetStyle.textFontFamily,
-            fontWeight = FontWeight.Bold,
-        )
+    val targetTextStyle = presentation.targetTextStyle
     val textMeasurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    val hasCustomContent = content != null || before != null || after != null || extra != null
-    val widthMode =
-        when {
-            stretch -> ButtonWidthMode.Stretch
-            width != null -> ButtonWidthMode.Fixed
-            else -> ButtonWidthMode.Auto
-        }
-    val targetHeightPx = with(density) { height.roundToPx() }
-    val targetPaddingHorizontalPx = with(density) { contentPaddingHorizontal.roundToPx() }
-    val targetPaddingTopPx = with(density) { contentPaddingTop.roundToPx() }
-    val targetPaddingBottomPx = with(density) { contentPaddingBottom.roundToPx() }
-    val targetBorderWidthPx = with(density) { (targetStyle.borderWidth ?: fallback.borderWidth!!).roundToPx() }
-    val targetSizeSignature =
-        SizeTransitionSignature(
-            heightPx = targetHeightPx,
-            paddingHorizontalPx = targetPaddingHorizontalPx,
-            paddingTopPx = targetPaddingTopPx,
-            paddingBottomPx = targetPaddingBottomPx,
-            style = targetStyle,
-        )
+    val accessibilityTextGrowth = presentation.accessibilityTextGrowth
+    val hasCustomContent = presentation.hasCustomContent
+    val widthMode = presentation.widthMode
+    val targetHeightPx = presentation.targetHeightPx
+    val targetPaddingHorizontalPx = presentation.targetPaddingHorizontalPx
+    val targetPaddingTopPx = presentation.targetPaddingTopPx
+    val targetPaddingBottomPx = presentation.targetPaddingBottomPx
+    val targetBorderWidthPx = presentation.targetBorderWidthPx
+    val targetSizeSignature = presentation.sizeSignature
 
-    val pressValue = remember { Animatable(0f) }
-    val contentTransition = remember { Animatable(1f) }
-    val activityTransition = remember { Animatable(0f) }
-    val progressOverlayOpacity = remember { Animatable(0f) }
-    val progressValue = remember { Animatable(0f) }
+    val releaseOwner = remember { AwesomeButtonReleaseOwner(scope) }
+    val progressOwner = remember { AwesomeButtonProgressOwner(scope) }
+    val progressCommands = remember { AwesomeButtonProgressCommandPort() }
 
     fun measureAutoTextWidthPx(text: String): Int {
         val measuredText =
@@ -158,45 +285,60 @@ fun AwesomeButton(
             !hasCustomContent
     val initialResolvedWidthPx =
         when {
-            widthMode == ButtonWidthMode.Fixed -> with(density) { width!!.roundToPx() }
+            widthMode == ButtonWidthMode.Fixed -> with(density) { normalizedWidth!!.roundToPx() }
             autoWidthTextEligible -> measureAutoTextWidthPx(child!!)
             else -> null
         }
-    val resolvedWidthPx = remember { Animatable((initialResolvedWidthPx ?: 0).toFloat()) }
-    val resolvedHeightPx = remember { Animatable(targetHeightPx.toFloat()) }
-    val animatedHeight = with(density) { resolvedHeightPx.value.toDp() }
+    val sizeTextOwner =
+        remember {
+            AwesomeButtonSizeTextOwner(
+                scope = scope,
+                initialResolvedWidthPx = initialResolvedWidthPx,
+                initialHeightPx = targetHeightPx,
+                initialText = child,
+                initialAutoWidthTextEligible = autoWidthTextEligible,
+            )
+        }
+    val animatedHeight = with(density) { sizeTextOwner.resolvedHeightPx.value.toDp() }
     val raiseAmount = resolvedStyle.raiseAmount ?: fallback.raiseAmount!!
-    val geometry = AwesomeButtonGeometry(animatedHeight, raiseAmount)
 
-    var busy by remember { mutableStateOf(false) }
-    var nextConsumed by remember { mutableStateOf(false) }
-    var showProgressVisuals by remember { mutableStateOf(false) }
-    var progressTravelJob by remember { mutableStateOf<Job?>(null) }
-    var progressContentJob by remember { mutableStateOf<Job?>(null) }
-    var progressActivityJob by remember { mutableStateOf<Job?>(null) }
-    var progressOverlayJob by remember { mutableStateOf<Job?>(null) }
-    var progressDeferredPressJob by remember { mutableStateOf<Job?>(null) }
-    var progressCompletionJob by remember { mutableStateOf<Job?>(null) }
-    var progressRunId by remember { mutableLongStateOf(0L) }
-    var lastAcceptedPressAt by remember { mutableLongStateOf(0L) }
+    val busy = progressOwner.busy
+    val debounceOwner = remember { AwesomeButtonDebounceOwner() }
     var keyboardArmed by remember { mutableStateOf(false) }
-    var displayedText by remember { mutableStateOf(child) }
-    var currentTextTarget by remember { mutableStateOf(child) }
-    var measurementText by remember { mutableStateOf(child) }
-    var contentClipAlignment by remember { mutableStateOf(ContentClipAlignment.Center) }
-    var hasExplicitResolvedWidth by remember { mutableStateOf(initialResolvedWidthPx != null) }
-    var renderedWidthMode by remember { mutableStateOf<ButtonWidthMode?>(null) }
-    var renderedAutoWidthTextEligible by remember { mutableStateOf(autoWidthTextEligible) }
-    var renderedTextTransition by remember { mutableStateOf(textTransition) }
-    var renderedSizeSignature by remember { mutableStateOf<SizeTransitionSignature?>(null) }
-    var releaseGeneration by remember { mutableLongStateOf(0L) }
-    var activeReleaseGeneration by remember { mutableStateOf<Long?>(null) }
-    var releaseAnimationJob by remember { mutableStateOf<Job?>(null) }
-    var releaseSettleJob by remember { mutableStateOf<Job?>(null) }
-    var deferredAutoWidthUpdatePending by remember { mutableStateOf(false) }
-    var deferredAutoWidthDrainToken by remember { mutableLongStateOf(0L) }
+    var keyboardGestureToken by remember { mutableStateOf<Long?>(null) }
+    var keyboardPressInJob by remember { mutableStateOf<Job?>(null) }
+    var terminalGeneration by remember { mutableLongStateOf(0L) }
+    var activeTerminalGeneration by remember { mutableStateOf<Long?>(null) }
+    var mounted by remember { mutableStateOf(true) }
+    val gestureOwner = remember { AwesomeButtonGestureOwner() }
+    val interactionDependencies =
+        rememberUpdatedState(
+            AwesomeButtonInteractionDependencies(
+                onPress = onPress,
+                onLongPress = onLongPress,
+                onPressIn = onPressIn,
+                onPressOut = onPressOut,
+                onPressedIn = onPressedIn,
+                onPressedOut = onPressedOut,
+                onProgressStart = onProgressStart,
+                onProgressEnd = onProgressEnd,
+                effectiveDisabled = effectiveDisabled,
+                busy = progressOwner.busy,
+                progress = progress,
+                showProgressBar = showProgressBar,
+                progressLoadingTimeMillis = normalizedProgressLoadingMillis,
+                debouncedPressTimeMillis = normalizedDebounceMillis,
+                pressInAnimationDurationMillis = normalizedPressInDurationMillis,
+                style = targetStyle,
+                reduceMotion = reduceMotion,
+            ),
+        )
 
-    LaunchedEffect(targetStyle, effectiveDisabled) {
+    SideEffect {
+        gestureOwner.observeLongPressAvailability(onLongPress != null)
+    }
+
+    LaunchedEffect(targetStyle, effectiveDisabled, reduceMotion) {
         val currentStyle =
             interpolateAwesomeButtonStyle(
                 styleTransitionSource,
@@ -204,10 +346,12 @@ fun AwesomeButton(
                 styleTransitionProgress.value,
             )
         val shouldAnimate =
-            lastStyleTransitionDisabled == effectiveDisabled && currentStyle != targetStyle
+            !styleIsResolvedFrame &&
+                lastStyleTransitionDisabled == effectiveDisabled &&
+                currentStyle != targetStyle
         lastStyleTransitionDisabled = effectiveDisabled
 
-        if (!shouldAnimate) {
+        if (!shouldAnimate || reduceMotion) {
             styleTransitionSource = targetStyle
             styleTransitionTarget = targetStyle
             styleTransitionProgress.snapTo(1f)
@@ -219,685 +363,544 @@ fun AwesomeButton(
         styleTransitionProgress.snapTo(0f)
         styleTransitionProgress.animateTo(
             targetValue = 1f,
-            animationSpec = tween(
-                durationMillis = StyleTransitionDurationMillis,
-                easing = (targetStyle.animationCurve ?: fallback.animationCurve!!).toEasing(),
-            ),
+            animationSpec =
+                tween(
+                    durationMillis = targetStyle.animationDurationMillis ?: fallback.animationDurationMillis!!,
+                    easing = (targetStyle.animationCurve ?: fallback.animationCurve!!).toEasing(),
+                ),
         )
     }
 
+    val targetAutoWidthPx =
+        if (autoWidthTextEligible) {
+            measureAutoTextWidthPx(child!!)
+        } else {
+            null
+        }
+    val fixedWidthPx =
+        if (widthMode == ButtonWidthMode.Fixed) {
+            with(density) { normalizedWidth!!.roundToPx() }
+        } else {
+            null
+        }
+    val sizeTextInput =
+        AwesomeButtonSizeTextInput(
+            widthMode = widthMode,
+            fixedWidthPx = fixedWidthPx,
+            targetHeightPx = targetHeightPx,
+            autoWidthTextEligible = autoWidthTextEligible,
+            targetAutoWidthPx = targetAutoWidthPx,
+            targetText = child,
+            animateSize = animateSize,
+            textTransition = textTransition,
+            textTransitionSlotStaggerMillis = textTransitionSlotStaggerMillis,
+            sizeSignature = targetSizeSignature,
+            releaseActive = releaseOwner.activeGeneration != null,
+            reduceMotion = reduceMotion,
+        )
     LaunchedEffect(
         child,
         textTransition,
         textTransitionSlotStaggerMillis,
         widthMode,
-        width,
+        normalizedWidth,
         hasCustomContent,
         animateSize,
         targetTextStyle,
         contentPaddingHorizontal,
         contentPaddingTop,
         contentPaddingBottom,
-        height,
+        normalizedHeight,
         targetBorderWidthPx,
         targetSizeSignature,
-        deferredAutoWidthDrainToken,
+        reduceMotion,
     ) {
-        val normalizedSlotStaggerMillis = normalizeTextTransitionSlotStaggerMillis(textTransitionSlotStaggerMillis)
-        val targetText = child
-        val previousWidthMode = renderedWidthMode
-        val widthBridge = shouldSnapWidthBridge(previousWidthMode, widthMode)
-        val currentWidthPx =
-            if (!widthBridge && hasExplicitResolvedWidth) {
-                resolvedWidthPx.value.roundToInt()
-            } else {
-                null
-            }
-        val targetAutoWidthPx =
-            if (autoWidthTextEligible) {
-                measureAutoTextWidthPx(targetText)
-            } else {
-                null
-            }
-
-        if (shouldDeferReleaseAutoWidthTransition(
-                isReleaseActive = activeReleaseGeneration != null,
-                previousWidthMode = previousWidthMode,
-                nextWidthMode = widthMode,
-                currentAutoWidthTextEligible = renderedAutoWidthTextEligible,
-                nextAutoWidthTextEligible = autoWidthTextEligible,
-                currentTextTransition = renderedTextTransition,
-                nextTextTransition = textTransition,
-                nextAnimateSize = animateSize,
-                sizeSignatureUnchanged = renderedSizeSignature == targetSizeSignature,
-                currentText = currentTextTarget,
-                nextText = targetText,
-                currentWidthPx = currentWidthPx,
-                targetWidthPx = targetAutoWidthPx,
-            )
-        ) {
-            deferredAutoWidthUpdatePending = true
-            return@LaunchedEffect
-        }
-
-        deferredAutoWidthUpdatePending = false
-        renderedWidthMode = widthMode
-        renderedAutoWidthTextEligible = autoWidthTextEligible
-        renderedTextTransition = textTransition
-        renderedSizeSignature = targetSizeSignature
-
-        suspend fun snapWidth(targetWidthPx: Int?) {
-            if (targetWidthPx == null) {
-                hasExplicitResolvedWidth = false
-                return
-            }
-
-            hasExplicitResolvedWidth = true
-            resolvedWidthPx.snapTo(targetWidthPx.toFloat())
-        }
-
-        suspend fun animateWidthTo(
-            targetWidthPx: Int,
-            durationMillis: Int = SizeAnimationDurationMillis,
-        ) {
-            hasExplicitResolvedWidth = true
-            if (durationMillis <= 0 || abs(resolvedWidthPx.value - targetWidthPx) < 0.5f) {
-                resolvedWidthPx.snapTo(targetWidthPx.toFloat())
-                return
-            }
-
-            resolvedWidthPx.animateTo(
-                targetValue = targetWidthPx.toFloat(),
-                animationSpec = tween(
-                    durationMillis = durationMillis,
-                    easing = SizeAnimationEasing,
-                ),
-            )
-        }
-
-        suspend fun updateHeight() {
-            if (widthBridge || !animateSize) {
-                resolvedHeightPx.snapTo(targetHeightPx.toFloat())
-                return
-            }
-
-            if (abs(resolvedHeightPx.value - targetHeightPx) >= 0.5f) {
-                resolvedHeightPx.animateTo(
-                    targetValue = targetHeightPx.toFloat(),
-                    animationSpec = tween(
-                        durationMillis = SizeAnimationDurationMillis,
-                        easing = SizeAnimationEasing,
-                    ),
-                )
-            }
-        }
-
-        val heightJob = launch { updateHeight() }
-
-        suspend fun assignText(nextText: String?) {
-            currentTextTarget = nextText
-            measurementText = nextText
-            displayedText = nextText
-            contentClipAlignment = ContentClipAlignment.Center
-        }
-
-        suspend fun runTextTransitionToTarget(
-            fromText: String,
-            nextText: String,
-        ) {
-            runFrameTextTransition(
-                fromText = fromText,
-                targetText = nextText,
-                slotStaggerMillis = normalizedSlotStaggerMillis,
-                onUpdate = { displayedText = it },
-                onComplete = { displayedText = nextText },
-            )
-        }
-
-        suspend fun syncTextTransitionState() {
-            contentClipAlignment = ContentClipAlignment.Center
-            when (val updatePlan =
-                resolveButtonTextUpdatePlan(
-                    textTransitionEnabled = textTransition,
-                    nextText = targetText,
-                    currentTarget = currentTextTarget,
-                    displayedText = displayedText,
-                )
-            ) {
-                is ButtonTextUpdatePlan.Assign -> assignText(updatePlan.text)
-                ButtonTextUpdatePlan.Keep -> {
-                    if (widthMode != ButtonWidthMode.Auto || !autoWidthTextEligible) {
-                        measurementText = targetText
-                    }
-                }
-                is ButtonTextUpdatePlan.Transition -> {
-                    currentTextTarget = updatePlan.targetText
-                    measurementText = updatePlan.targetText
-                    runTextTransitionToTarget(updatePlan.sourceText, updatePlan.targetText)
-                }
-            }
-        }
-
-        when (widthMode) {
-            ButtonWidthMode.Stretch -> {
-                snapWidth(null)
-                syncTextTransitionState()
-            }
-            ButtonWidthMode.Fixed -> {
-                val fixedWidthPx = with(density) { width!!.roundToPx() }
-                if (widthBridge || !animateSize || !hasExplicitResolvedWidth) {
-                    snapWidth(fixedWidthPx)
-                } else {
-                    launch { animateWidthTo(fixedWidthPx) }
-                }
-                syncTextTransitionState()
-            }
-            ButtonWidthMode.Auto -> {
-                val plan =
-                    resolveAutoWidthTextUpdatePlan(
-                        isEligible = autoWidthTextEligible,
-                        targetText = targetText,
-                        currentWidthPx = currentWidthPx,
-                        targetWidthPx = targetAutoWidthPx,
-                        displayedText = displayedText,
-                        animateSize = animateSize,
-                        textTransition = textTransition,
-                        slotStaggerMillis = normalizedSlotStaggerMillis,
-                    )
-
-                when (plan) {
-                    AutoWidthTextUpdatePlan.FallbackToTextSync -> {
-                        snapWidth(null)
-                        syncTextTransitionState()
-                    }
-                    is AutoWidthTextUpdatePlan.Initial -> {
-                        currentTextTarget = plan.targetText
-                        measurementText = plan.targetText
-                        displayedText = plan.targetText
-                        contentClipAlignment = ContentClipAlignment.Center
-                        snapWidth(plan.targetWidthPx)
-                    }
-                    is AutoWidthTextUpdatePlan.TextOnly -> {
-                        currentTextTarget = plan.targetText
-                        measurementText = plan.targetText
-                        contentClipAlignment = ContentClipAlignment.Center
-                        if (plan.animateText) {
-                            runTextTransitionToTarget(plan.sourceText, plan.targetText)
-                        } else {
-                            displayedText = plan.targetText
-                        }
-                    }
-                    is AutoWidthTextUpdatePlan.GrowFirst -> {
-                        currentTextTarget = plan.targetText
-                        measurementText = plan.targetText
-                        contentClipAlignment = ContentClipAlignment.Center
-                        if (plan.animateSize) {
-                            val widthDuration =
-                                if (plan.animateText) {
-                                    plan.timing.widthDurationMillis
-                                } else {
-                                    SizeAnimationDurationMillis
-                                }
-                            launch { animateWidthTo(plan.targetWidthPx, widthDuration) }
-                        } else {
-                            snapWidth(plan.targetWidthPx)
-                        }
-
-                        if (plan.animateText) {
-                            delay(if (plan.animateSize) plan.timing.textDelayMillis.toLong() else 0L)
-                            runTextTransitionToTarget(plan.sourceText, plan.targetText)
-                        } else {
-                            delay(if (plan.animateSize) SizeAnimationDurationMillis.toLong() else 0L)
-                            displayedText = plan.targetText
-                        }
-                    }
-                    is AutoWidthTextUpdatePlan.ShrinkLast -> {
-                        currentTextTarget = plan.targetText
-                        measurementText = plan.sourceText
-                        if (plan.animateText) {
-                            contentClipAlignment = ContentClipAlignment.Leading
-                            val textJob = launch {
-                                runTextTransitionToTarget(plan.sourceText, plan.targetText)
-                                contentClipAlignment = ContentClipAlignment.Center
-                            }
-                            val widthJob = launch {
-                                delay(if (plan.animateSize) plan.timing.widthDelayMillis.toLong() else 0L)
-                                measurementText = plan.targetText
-                                if (plan.animateSize) {
-                                    animateWidthTo(plan.targetWidthPx, plan.timing.widthDurationMillis)
-                                } else {
-                                    snapWidth(plan.targetWidthPx)
-                                }
-                            }
-                            textJob.join()
-                            widthJob.join()
-                        } else {
-                            contentClipAlignment = ContentClipAlignment.Center
-                            measurementText = plan.targetText
-                            displayedText = plan.targetText
-                            if (plan.animateSize) {
-                                animateWidthTo(plan.targetWidthPx)
-                            } else {
-                                snapWidth(plan.targetWidthPx)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        heightJob.join()
+        sizeTextOwner.reconcile(sizeTextInput)
     }
 
-    fun canStartGesture() = !effectiveDisabled && !busy
-    fun canDispatchTap() = !effectiveDisabled && !busy && onPress != null
+    fun canStartGesture(dependencies: AwesomeButtonInteractionDependencies = interactionDependencies.value) =
+        !dependencies.effectiveDisabled && !dependencies.busy
 
-    fun cancelProgressJobs() {
-        progressTravelJob?.cancel()
-        progressTravelJob = null
-        progressContentJob?.cancel()
-        progressContentJob = null
-        progressActivityJob?.cancel()
-        progressActivityJob = null
-        progressOverlayJob?.cancel()
-        progressOverlayJob = null
-        progressDeferredPressJob?.cancel()
-        progressDeferredPressJob = null
-        progressCompletionJob?.cancel()
-        progressCompletionJob = null
-    }
+    fun canDispatchTap(dependencies: AwesomeButtonInteractionDependencies = interactionDependencies.value) =
+        canStartGesture(dependencies) && dependencies.onPress != null
 
-    suspend fun resetProgressVisualState(unmount: Boolean) {
-        contentTransition.snapTo(1f)
-        activityTransition.snapTo(0f)
-        progressOverlayOpacity.snapTo(0f)
-        progressValue.snapTo(0f)
-        if (unmount) {
-            showProgressVisuals = false
-        }
-    }
+    fun canBeginGesture(dependencies: AwesomeButtonInteractionDependencies = interactionDependencies.value) =
+        canStartGesture(dependencies) &&
+            (activeTerminalGeneration == null || releaseOwner.activeGeneration != null)
 
-    fun cancelReleaseTracking(cancelAnimation: Boolean = true) {
-        releaseGeneration += 1
-        activeReleaseGeneration = null
-        releaseSettleJob?.cancel()
-        releaseSettleJob = null
-        if (cancelAnimation) {
-            releaseAnimationJob?.cancel()
-            releaseAnimationJob = null
-        }
-    }
-
-    fun completeReleaseIfCurrent(generation: Long) {
-        if (activeReleaseGeneration != generation) return
-        activeReleaseGeneration = null
-        releaseSettleJob = null
-        onPressedOut?.invoke()
-        if (deferredAutoWidthUpdatePending) {
-            deferredAutoWidthUpdatePending = false
-            deferredAutoWidthDrainToken += 1
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            progressRunId += 1
-            nextConsumed = true
-            cancelProgressJobs()
-            cancelReleaseTracking()
-        }
-    }
-
-    suspend fun pressIn() {
-        cancelReleaseTracking()
-        onPressIn?.invoke()
-        onPressedIn?.invoke()
-        pressValue.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(
-                durationMillis = targetStyle.animationDurationMillis ?: fallback.animationDurationMillis!!,
-                easing = (targetStyle.animationCurve ?: fallback.animationCurve!!).toEasing(),
-            ),
-        )
-    }
-
-    suspend fun releasePressedState() {
-        releaseGeneration += 1
-        val generation = releaseGeneration
-        activeReleaseGeneration = generation
-        releaseSettleJob?.cancel()
-        releaseAnimationJob?.cancel()
-        releaseAnimationJob =
-            scope.launch {
-                pressValue.animateTo(
-                    targetValue = 0f,
-                    animationSpec = spring(
-                        dampingRatio = ReleaseSpringDampingRatio,
-                        stiffness = ReleaseSpringStiffness,
-                    ),
-                )
-            }
-
-        val settleJob =
-            scope.launch {
-                delay(ReleaseSpringSettleDurationMillis.toLong())
-                completeReleaseIfCurrent(generation)
-            }
-        releaseSettleJob = settleJob
-        settleJob.join()
-        if (releaseSettleJob == settleJob) {
-            releaseSettleJob = null
-        }
-    }
-
-    suspend fun snapReleasedState() {
-        cancelReleaseTracking()
-        pressValue.snapTo(0f)
-    }
-
-    fun consumeDebounceWindow(): Boolean {
-        if (debouncedPressTimeMillis <= 0) return true
-        val now = SystemClock.uptimeMillis()
-        if (now - lastAcceptedPressAt < debouncedPressTimeMillis) {
-            return false
-        }
-        lastAcceptedPressAt = now
+    fun dispatchReleaseSettlement(settlement: AwesomeButtonReleaseSettlement?): Boolean {
+        settlement ?: return false
+        if (!mounted) return false
+        settlement.onPressedOut?.invoke()
+        if (!mounted) return false
+        sizeTextOwner.settleDeferredAfterRelease()
         return true
     }
 
-    fun completeProgress(
-        callback: (() -> Unit)? = null,
-        runId: Long = progressRunId,
-    ) {
-        if (progressRunId != runId || !busy || nextConsumed) return
-        nextConsumed = true
-        progressCompletionJob?.cancel()
-        progressCompletionJob = scope.launch {
-            progressTravelJob?.cancel()
-            progressTravelJob = null
-            if (progressValue.value < 1f) {
-                progressValue.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = ProgressFillCompletionDurationMillis,
-                        easing = ProgressCompletionEasing,
-                    ),
-                )
-            }
-            if (progressRunId != runId) return@launch
-
-            progressContentJob?.cancel()
-            progressActivityJob?.cancel()
-            progressOverlayJob?.cancel()
-
-            val restoreJob = launch {
-                contentTransition.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = ProgressSwapDurationMillis,
-                        easing = ProgressSwapEasing,
-                    ),
-                )
-            }
-            val spinnerJob = launch {
-                activityTransition.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(
-                        durationMillis = ProgressSwapDurationMillis,
-                        easing = ProgressSwapEasing,
-                    ),
-                )
-            }
-            val overlayJob = launch {
-                delay(ProgressOverlayFadeDelayMillis.toLong())
-                if (progressRunId != runId) return@launch
-                progressOverlayOpacity.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(
-                        durationMillis = ProgressOverlayFadeDurationMillis,
-                        easing = ProgressCompletionEasing,
-                    ),
-                )
-            }
-            restoreJob.join()
-            spinnerJob.join()
-            overlayJob.join()
-            if (progressRunId != runId) return@launch
-
-            releasePressedState()
-            if (progressRunId != runId) return@launch
-
-            showProgressVisuals = false
-            busy = false
-            resetProgressVisualState(unmount = false)
-            callback?.invoke()
-            onProgressEnd?.invoke()
-            progressCompletionJob = null
+    DisposableEffect(Unit) {
+        mounted = true
+        onDispose {
+            mounted = false
+            gestureOwner.teardown()
+            keyboardPressInJob?.cancel()
+            keyboardPressInJob = null
+            activeTerminalGeneration = null
+            progressOwner.cancel(unmount = true)
+            releaseOwner.cancel()
+            sizeTextOwner.cancel()
         }
     }
 
-    suspend fun startProgressFlow() {
-        if (busy || onPress == null) return
-        progressRunId += 1
-        val runId = progressRunId
-        cancelProgressJobs()
-        cancelReleaseTracking()
-        busy = true
-        nextConsumed = false
-        pressValue.snapTo(1f)
-        showProgressVisuals = true
-        resetProgressVisualState(unmount = false)
-        progressOverlayOpacity.snapTo(if (showProgressBar) 1f else 0f)
-        onProgressStart?.invoke()
-        progressContentJob = scope.launch {
-            contentTransition.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(
-                    durationMillis = ProgressSwapDurationMillis,
-                    easing = ProgressSwapEasing,
-                ),
+    suspend fun preparePressIn(
+        token: Long,
+        gestureScope: CoroutineScope,
+    ): Boolean {
+        releaseOwner.invalidate()
+        interactionDependencies.value.onPressIn?.invoke()
+        yield()
+        if (
+            !mounted ||
+            !gestureOwner.isActive(token) ||
+            !canStartGesture()
+        ) {
+            return false
+        }
+        interactionDependencies.value.onPressedIn?.invoke()
+        yield()
+        if (
+            !mounted ||
+            !gestureOwner.isActive(token) ||
+            !canStartGesture()
+        ) {
+            return false
+        }
+        val animationDependencies = interactionDependencies.value
+        val styleAtAnimationStart = animationDependencies.style
+        gestureScope.launch {
+            releaseOwner.press(
+                reduceMotion = animationDependencies.reduceMotion,
+                durationMillis =
+                    resolvePressInDurationMillis(
+                        overrideMillis = animationDependencies.pressInAnimationDurationMillis,
+                        styleMillis = styleAtAnimationStart.animationDurationMillis,
+                        fallbackMillis = fallback.animationDurationMillis!!,
+                    ),
+                style = styleAtAnimationStart,
+                fallback = fallback,
             )
         }
-        progressActivityJob = scope.launch {
-            activityTransition.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = ProgressSwapDurationMillis,
-                    easing = ProgressSwapEasing,
-                ),
-            )
-        }
-        progressTravelJob = scope.launch {
-            progressValue.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = progressLoadingTimeMillis.coerceAtLeast(0),
-                    easing = LinearEasing,
-                ),
-            )
-        }
-        progressDeferredPressJob = scope.launch {
-            withFrameNanos { }
-            if (progressRunId != runId || !busy) return@launch
-            onPress?.invoke(AwesomeButtonNext { callback -> completeProgress(callback, runId) })
-            if (progressRunId == runId) {
-                progressDeferredPressJob = null
-            }
-        }
+        return true
     }
 
-    fun activatePressed() {
-        scope.launch {
-            onPressOut?.invoke()
-            if (!canDispatchTap() || !consumeDebounceWindow()) {
-                releasePressedState()
-                return@launch
-            }
-            if (progress) {
-                startProgressFlow()
+    suspend fun releasePressedState(onPressedOutSnapshot: (() -> Unit)?): Boolean {
+        val settlement =
+            releaseOwner.release(
+                onPressedOut = onPressedOutSnapshot,
+                reduceMotion = interactionDependencies.value.reduceMotion,
+            )
+        return dispatchReleaseSettlement(settlement)
+    }
+
+    suspend fun snapReleasedState() {
+        releaseOwner.snapReleased()
+    }
+
+    fun consumeDebounceWindow(): Boolean =
+        debounceOwner.tryAccept(
+            nowMillis = SystemClock.uptimeMillis(),
+            durationMillis = interactionDependencies.value.debouncedPressTimeMillis,
+        )
+
+    fun startProgressFlow(physicalLifecycle: Boolean) {
+        progressOwner.start(
+            physicalLifecycle = physicalLifecycle,
+            commands = progressCommands,
+            snapPressedState = { isPhysical ->
+                releaseOwner.snapPressed(isPhysical)
+            },
+        )
+    }
+
+    fun activateAtomically(): Boolean {
+        val dependencies = interactionDependencies.value
+        if (!canDispatchTap(dependencies) || !consumeDebounceWindow()) return false
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val liveDependencies = interactionDependencies.value
+            if (!canDispatchTap(liveDependencies)) return@launch
+            if (liveDependencies.progress) {
+                startProgressFlow(physicalLifecycle = false)
             } else {
-                onPress?.invoke(null)
-                releasePressedState()
+                liveDependencies.onPress?.invoke(null)
             }
         }
+        return true
     }
 
-    fun cancelPressed() {
+    fun activateLongPressAtomically(): Boolean {
+        val dependencies = interactionDependencies.value
+        val handler = dependencies.onLongPress
+        if (!canStartGesture(dependencies) || handler == null) return false
+        handler()
+        return true
+    }
+
+    fun activatePressed(generation: Long) {
         scope.launch {
-            onPressOut?.invoke()
-            releasePressedState()
-        }
-    }
-
-    LaunchedEffect(effectiveDisabled) {
-        if (effectiveDisabled && !busy) {
-            snapReleasedState()
-        }
-    }
-
-    val interactionModifier =
-        Modifier
-            .focusable(enabled = !effectiveDisabled && !busy)
-            .onKeyEvent { event ->
-                val isActivationKey = event.key == Key.Enter || event.key == Key.Spacebar
-                if (!isActivationKey) return@onKeyEvent false
-                when (event.type) {
-                    KeyEventType.KeyDown -> {
-                        if (!keyboardArmed && canStartGesture()) {
-                            keyboardArmed = true
-                            scope.launch { pressIn() }
-                        }
-                        true
-                    }
-                    KeyEventType.KeyUp -> {
-                        if (keyboardArmed) {
-                            keyboardArmed = false
-                            activatePressed()
-                        }
-                        true
-                    }
-                    else -> false
+            try {
+                val pressedOutBeforePressOut = interactionDependencies.value.onPressedOut
+                interactionDependencies.value.onPressOut?.invoke()
+                yield()
+                if (!mounted || activeTerminalGeneration != generation) return@launch
+                val dispatchDependencies = interactionDependencies.value
+                if (!canDispatchTap(dispatchDependencies) || !consumeDebounceWindow()) {
+                    releasePressedState(pressedOutBeforePressOut)
+                    return@launch
+                }
+                if (dispatchDependencies.progress) {
+                    startProgressFlow(physicalLifecycle = true)
+                } else {
+                    dispatchDependencies.onPress?.invoke(null)
+                    yield()
+                    if (!mounted || activeTerminalGeneration != generation) return@launch
+                    releasePressedState(pressedOutBeforePressOut)
+                }
+            } finally {
+                if (mounted && activeTerminalGeneration == generation) {
+                    activeTerminalGeneration = null
                 }
             }
-            .pointerInput(effectiveDisabled, busy, onPress, onLongPress, progress) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    if (!canStartGesture()) return@awaitEachGesture
+        }
+    }
 
-                    var pointerId: PointerId = down.id
-                    var canceled = false
-                    var longPressFired = false
-                    val longPressJob =
-                        onLongPress?.let { longPressHandler ->
-                            scope.launch {
-                                delay(viewConfiguration.longPressTimeoutMillis)
-                                if (!canceled) {
-                                    longPressFired = true
-                                    longPressHandler()
+    fun cancelPressed(generation: Long) {
+        scope.launch {
+            try {
+                val pressedOutSnapshot = interactionDependencies.value.onPressedOut
+                interactionDependencies.value.onPressOut?.invoke()
+                yield()
+                if (!mounted || activeTerminalGeneration != generation) return@launch
+                releasePressedState(pressedOutSnapshot)
+            } finally {
+                if (mounted && activeTerminalGeneration == generation) {
+                    activeTerminalGeneration = null
+                }
+            }
+        }
+    }
+
+    fun dispatchGestureOutcome(outcome: AwesomeButtonGestureOutcome) {
+        when (outcome) {
+            AwesomeButtonGestureOutcome.Activate -> {
+                terminalGeneration += 1
+                activeTerminalGeneration = terminalGeneration
+                activatePressed(terminalGeneration)
+            }
+            AwesomeButtonGestureOutcome.LongPressCleanup,
+            AwesomeButtonGestureOutcome.Cancel,
+            -> {
+                terminalGeneration += 1
+                activeTerminalGeneration = terminalGeneration
+                cancelPressed(terminalGeneration)
+            }
+            AwesomeButtonGestureOutcome.Ignore -> Unit
+        }
+    }
+
+    SideEffect {
+        progressCommands.update(
+            object : AwesomeButtonProgressCommandBindings {
+                override fun isMounted(): Boolean = mounted
+
+                override fun currentDependencies(): AwesomeButtonProgressDependencies {
+                    val dependencies = interactionDependencies.value
+                    return AwesomeButtonProgressDependencies(
+                        onPress = dependencies.onPress,
+                        onProgressStart = dependencies.onProgressStart,
+                        onProgressEnd = dependencies.onProgressEnd,
+                        onPressedOut = dependencies.onPressedOut,
+                        effectiveDisabled = dependencies.effectiveDisabled,
+                        showProgressBar = dependencies.showProgressBar,
+                        progressLoadingTimeMillis = dependencies.progressLoadingTimeMillis,
+                        reduceMotion = dependencies.reduceMotion,
+                    )
+                }
+
+                override suspend fun requestRelease(
+                    physicalLifecycle: Boolean,
+                    onPressedOutSnapshot: (() -> Unit)?,
+                ): Boolean {
+                    if (!mounted) return false
+                    return if (physicalLifecycle) {
+                        releasePressedState(onPressedOutSnapshot)
+                    } else {
+                        snapReleasedState()
+                        mounted
+                    }
+                }
+            },
+        )
+    }
+
+    LaunchedEffect(effectiveDisabled, busy) {
+        if (effectiveDisabled || busy) {
+            keyboardArmed = false
+            keyboardGestureToken = null
+            keyboardPressInJob?.cancel()
+            keyboardPressInJob = null
+            val outcome = gestureOwner.cancelActive()
+            if (outcome == AwesomeButtonGestureOutcome.Ignore) {
+                if (busy && effectiveDisabled && !progressOwner.nextConsumed) {
+                    progressOwner.rollback()
+                } else if (
+                    effectiveDisabled &&
+                    !busy &&
+                    activeTerminalGeneration == null &&
+                    releaseOwner.activeGeneration == null
+                ) {
+                    snapReleasedState()
+                }
+            } else {
+                dispatchGestureOutcome(outcome)
+            }
+        }
+    }
+
+    LaunchedEffect(reduceMotion, busy, showProgressBar) {
+        progressOwner.applyMotionPolicy(
+            reduceMotion = reduceMotion,
+            showProgressBar = showProgressBar,
+            releaseActive = releaseOwner.activeGeneration != null,
+        )
+
+        if (!reduceMotion) return@LaunchedEffect
+
+        if (releaseOwner.activeGeneration != null) {
+            dispatchReleaseSettlement(releaseOwner.settleImmediately())
+        } else if (gestureOwner.hasActiveGesture || keyboardArmed || (busy && progressOwner.hasPhysicalLifecycle)) {
+            releaseOwner.snapPressed(true)
+        }
+    }
+
+    val activateAtomicallyCommand = { activateAtomically() }
+    val activateLongPressAtomicallyCommand = { activateLongPressAtomically() }
+    val interactionCommands = remember { AwesomeButtonInteractionCommandPort() }
+    SideEffect {
+        interactionCommands.update(
+            object : AwesomeButtonInteractionCommandBindings {
+                override fun canBeginGesture(): Boolean = canBeginGesture()
+
+                override fun hasLongPressHandler(): Boolean = interactionDependencies.value.onLongPress != null
+
+                override fun beginGesture(): Long? =
+                    gestureOwner.begin(
+                        longPressEligible = interactionDependencies.value.onLongPress != null,
+                    )
+
+                override suspend fun preparePressIn(
+                    token: Long,
+                    gestureScope: CoroutineScope,
+                ) {
+                    if (preparePressIn(token, gestureScope)) {
+                        dispatchGestureOutcome(gestureOwner.markPressInReady(token))
+                    }
+                }
+
+                override suspend fun dispatchLongPress(token: Long) {
+                    val dependencies = interactionDependencies.value
+                    val handler = dependencies.onLongPress
+                    if (
+                        canStartGesture(dependencies) &&
+                        handler != null &&
+                        gestureOwner.tryDispatchLongPress(token = token, hasHandler = true)
+                    ) {
+                        handler()
+                    }
+                }
+
+                override fun isGestureActive(token: Long): Boolean = gestureOwner.isActive(token)
+
+                override fun finishGesture(
+                    token: Long,
+                    inside: Boolean,
+                ) {
+                    dispatchGestureOutcome(gestureOwner.finish(token, inside))
+                }
+
+                override fun onFocusLost() {
+                    if (!keyboardArmed) return
+                    keyboardArmed = false
+                    val token = keyboardGestureToken
+                    keyboardGestureToken = null
+                    keyboardPressInJob?.cancel()
+                    keyboardPressInJob = null
+                    if (token != null) {
+                        dispatchGestureOutcome(gestureOwner.finish(token = token, inside = false))
+                    }
+                }
+
+                override fun onActivationKeyDown() {
+                    if (keyboardArmed || !canBeginGesture()) return
+                    val token =
+                        gestureOwner.begin(
+                            longPressEligible = interactionDependencies.value.onLongPress != null,
+                        ) ?: return
+                    keyboardArmed = true
+                    keyboardGestureToken = token
+                    keyboardPressInJob =
+                        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            if (preparePressIn(token, scope)) {
+                                val outcome = gestureOwner.markPressInReady(token)
+                                if (!keyboardArmed && keyboardGestureToken == token) {
+                                    dispatchGestureOutcome(outcome)
+                                    keyboardGestureToken = null
+                                    keyboardPressInJob = null
                                 }
                             }
                         }
+                }
 
-                    scope.launch { pressIn() }
-
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
-                        val inside =
-                            change.position.x >= 0f &&
-                                change.position.y >= 0f &&
-                                change.position.x <= size.width &&
-                                change.position.y <= size.height
-                        if (!inside) {
-                            canceled = true
-                            break
+                override fun onActivationKeyUp() {
+                    if (!keyboardArmed) return
+                    keyboardArmed = false
+                    val token = keyboardGestureToken
+                    if (token != null) {
+                        val outcome = gestureOwner.finish(token = token, inside = true)
+                        dispatchGestureOutcome(outcome)
+                        if (outcome != AwesomeButtonGestureOutcome.Ignore) {
+                            keyboardGestureToken = null
+                            keyboardPressInJob = null
                         }
-                        if (!change.pressed) {
-                            break
-                        }
-                        change.consume()
-                        pointerId = change.id
                     }
+                }
 
-                    longPressJob?.cancel()
-                    if (canceled || longPressFired) {
-                        cancelPressed()
-                    } else {
-                        activatePressed()
-                    }
-                }
-            }
-            .semantics(mergeDescendants = true) {
-                role = Role.Button
-                stateDescription = if (busy) "Busy" else if (effectiveDisabled) "Disabled" else "Idle"
-                if (effectiveDisabled) {
-                    disabled()
-                }
-                onClick {
-                    if (!canStartGesture()) return@onClick false
-                    scope.launch {
-                        pressIn()
-                        activatePressed()
-                    }
-                    true
-                }
-            }
+                override fun activateAtomically(): Boolean = activateAtomicallyCommand()
 
-    AutoWidthButtonLayout(
-        modifier = modifier.then(interactionModifier).testTag("AwesomeButton"),
-        resolvedWidthPx = if (hasExplicitResolvedWidth) resolvedWidthPx.value else null,
-        height = animatedHeight,
-        totalHeight = geometry.totalHeight,
-        stretch = stretch,
-        paddingHorizontal = contentPaddingHorizontal,
-        paddingTop = contentPaddingTop,
-        paddingBottom = contentPaddingBottom,
-        contentGap = contentGap,
-        resolvedStyle = resolvedStyle,
-        child = measurementText,
-        before = before,
-        after = after,
-        content = content,
-        contentClipAlignment = ContentClipAlignment.Center,
-    ) {
-        ButtonLayers(
-            geometry = geometry,
-            resolvedStyle = resolvedStyle,
-            disabled = disabled,
-            isPlaceholder = isPlaceholder,
-            activeOpacity = activeOpacity,
-            progress = progress,
-            showProgressBar = showProgressBar,
-            busy = busy,
-            showProgressVisuals = showProgressVisuals,
-            pressValue = pressValue.value,
-            contentAlpha = contentTransition.value,
-            activityAlpha = activityTransition.value,
-            progressOverlayAlpha = progressOverlayOpacity.value,
-            progressValue = progressValue.value,
-            paddingHorizontal = contentPaddingHorizontal,
-            paddingTop = contentPaddingTop,
-            paddingBottom = contentPaddingBottom,
-            contentGap = contentGap,
-            child = displayedText,
-            before = before,
-            after = after,
-            extra = extra,
-            animatedPlaceholder = animatedPlaceholder,
-            contentClipAlignment = contentClipAlignment,
-            content = content,
+                override fun activateLongPressAtomically(): Boolean = activateLongPressAtomicallyCommand()
+            },
         )
     }
+    val interactionModifier =
+        Modifier.awesomeButtonInteraction(
+            commands = interactionCommands,
+            semantics =
+                AwesomeButtonInteractionSemantics(
+                    effectiveDisabled = effectiveDisabled,
+                    busy = busy,
+                    isPlaceholder = isPlaceholder,
+                    hasPressHandler = onPress != null,
+                    hasLongPressHandler = onLongPress != null,
+                    accessibilityLabel = accessibilityLabel,
+                    accessibilityHint = accessibilityHint,
+                    accessibilityLongPressLabel = accessibilityLongPressLabel,
+                    busyStateDescription = presentation.busyStateDescription,
+                    defaultLongPressLabel = presentation.defaultLongPressLabel,
+                ),
+        )
+
+    val visualPressValue = clampedVisualPressProgress(releaseOwner.pressValue.value)
+    val renderedContentOpacity =
+        if (progress) {
+            progressOwner.contentTransition.value.coerceIn(0f, 1f)
+        } else {
+            1f - ((1f - normalizedActiveOpacity) * visualPressValue)
+        }
+
+    AutoWidthButtonLayout(
+        modifier =
+            modifier
+                .then(interactionModifier)
+                .testTag("AwesomeButton"),
+        resolvedWidthPx =
+            if (sizeTextOwner.hasExplicitResolvedWidth) {
+                sizeTextOwner.resolvedWidthPx.value
+            } else {
+                null
+            },
+        minimumFaceHeight = animatedHeight,
+        raiseAmount = raiseAmount,
+        pressValue = releaseOwner.pressValue.value,
+        stretch = stretch,
+        contentClipShape = resolvedStyle.toShape(),
+        chrome = { layoutGeometry ->
+            ButtonLayers(
+                geometry = layoutGeometry,
+                resolvedStyle = resolvedStyle,
+                disabled = disabled,
+                isPlaceholder = isPlaceholder,
+                progress = progress,
+                showProgressBar = showProgressBar,
+                busy = busy,
+                showProgressVisuals = progressOwner.showProgressVisuals,
+                pressValue = releaseOwner.pressValue.value,
+                progressOverlayAlpha = progressOwner.overlayOpacity.value,
+                progressValue = progressOwner.progressValue.value,
+                paddingHorizontal = contentPaddingHorizontal,
+                paddingTop = contentPaddingTop,
+                paddingBottom = contentPaddingBottom,
+                extra = extra,
+                animatedPlaceholder = animatedPlaceholder,
+                reduceMotion = reduceMotion,
+            )
+        },
+        content =
+            if (isPlaceholder) {
+                null
+            } else {
+                {
+                    ButtonContent(
+                        modifier = Modifier,
+                        resolvedStyle = resolvedStyle,
+                        disabled = disabled,
+                        alpha = renderedContentOpacity,
+                        scale = if (progress) progressOwner.contentTransition.value else 1f,
+                        paddingHorizontal = contentPaddingHorizontal,
+                        paddingTop = contentPaddingTop,
+                        paddingBottom = contentPaddingBottom,
+                        contentGap = contentGap,
+                        child = sizeTextOwner.displayedText,
+                        before = before,
+                        after = after,
+                        content = content,
+                        contentClipAlignment = sizeTextOwner.contentClipAlignment,
+                        hideMainContentSemantics = accessibilityLabel != null,
+                        allowTextWrap = accessibilityTextGrowth,
+                    )
+                }
+            },
+        activity =
+            if (progressOwner.showProgressVisuals) {
+                {
+                    ButtonActivityOverlay(
+                        activityAlpha = progressOwner.activityTransition.value,
+                        color = resolvedStyle.activityColor ?: fallback.activityColor!!,
+                        reduceMotion = reduceMotion,
+                    )
+                }
+            } else {
+                null
+            },
+    )
 }
 
-private const val StyleTransitionDurationMillis = 200
-internal const val SizeAnimationDurationMillis = 175
-internal val SizeAnimationEasing = CubicBezierEasing(0.6f, 0.3f, 0.35f, 0.9f)
+internal const val SIZE_ANIMATION_DURATION_MILLIS = 175
+internal val sizeAnimationEasing = CubicBezierEasing(0.6f, 0.3f, 0.35f, 0.9f)
 
-private data class SizeTransitionSignature(
-    val heightPx: Int,
-    val paddingHorizontalPx: Int,
-    val paddingTopPx: Int,
-    val paddingBottomPx: Int,
+private data class AwesomeButtonInteractionDependencies(
+    val onPress: AwesomeButtonPressCallback?,
+    val onLongPress: (() -> Unit)?,
+    val onPressIn: (() -> Unit)?,
+    val onPressOut: (() -> Unit)?,
+    val onPressedIn: (() -> Unit)?,
+    val onPressedOut: (() -> Unit)?,
+    val onProgressStart: (() -> Unit)?,
+    val onProgressEnd: (() -> Unit)?,
+    val effectiveDisabled: Boolean,
+    val busy: Boolean,
+    val progress: Boolean,
+    val showProgressBar: Boolean,
+    val progressLoadingTimeMillis: Int,
+    val debouncedPressTimeMillis: Long,
+    val pressInAnimationDurationMillis: Int?,
     val style: AwesomeButtonStyle,
+    val reduceMotion: Boolean,
 )

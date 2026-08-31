@@ -16,7 +16,10 @@ internal fun blendColors(
     val ratio = kotlin.math.abs(percentage)
     val inverse = 1.0 - ratio
 
-    fun mix(start: Float, end: Float): Float {
+    fun mix(
+        start: Float,
+        end: Float,
+    ): Float {
         val startValue = (start * 255f).roundToInt().coerceIn(0, 255)
         val endValue = (end * 255f).roundToInt().coerceIn(0, 255)
         val mixed =
@@ -28,7 +31,10 @@ internal fun blendColors(
         return mixed.roundToInt().coerceIn(0, 255) / 255f
     }
 
-    fun mixAlpha(start: Float, end: Float): Float {
+    fun mixAlpha(
+        start: Float,
+        end: Float,
+    ): Float {
         val startValue = (start * 255f).roundToInt().coerceIn(0, 255)
         val endValue = (end * 255f).roundToInt().coerceIn(0, 255)
         if (startValue == 255 && endValue == 255) {

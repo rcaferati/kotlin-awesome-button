@@ -79,6 +79,10 @@ class TextTransitionTest {
             ButtonTextUpdatePlan.Transition("old", "next"),
             resolveButtonTextUpdatePlan(true, "next", currentTarget = "old", displayedText = "old"),
         )
+        assertEquals(
+            ButtonTextUpdatePlan.Transition("Qvpium", "Large"),
+            resolveButtonTextUpdatePlan(true, "Large", currentTarget = "Large", displayedText = "Qvpium"),
+        )
     }
 
     @Test
@@ -100,7 +104,7 @@ class TextTransitionTest {
         assertEquals(AutoWidthTextFlow.TextOnly, resolveAutoWidthTextFlow(100, 100))
         assertEquals(AutoWidthTextFlow.GrowFirst, resolveAutoWidthTextFlow(80, 100))
         assertEquals(AutoWidthTextFlow.ShrinkLast, resolveAutoWidthTextFlow(120, 100))
-        assertTrue(normalizeTextTransitionSlotStaggerMillis(0) >= 1)
+        assertEquals(0, normalizeTextTransitionSlotStaggerMillis(0))
     }
 
     @Test
@@ -144,7 +148,8 @@ class TextTransitionTest {
             ),
         )
 
-        val growTiming = resolveAutoWidthTextTransitionTiming("Launch", "View analytics dashboard", AutoWidthTextFlow.GrowFirst)
+        val growTiming =
+            resolveAutoWidthTextTransitionTiming("Launch", "View analytics dashboard", AutoWidthTextFlow.GrowFirst)
         assertEquals(
             AutoWidthTextUpdatePlan.GrowFirst(
                 sourceText = "Launch",
@@ -208,9 +213,9 @@ class TextTransitionTest {
 
     @Test
     fun sizeAnimationSpecMatchesSwift() {
-        assertEquals(175, SizeAnimationDurationMillis)
-        assertEquals(0f, SizeAnimationEasing.transform(0f), 0.0001f)
-        assertEquals(1f, SizeAnimationEasing.transform(1f), 0.0001f)
-        assertTrue(SizeAnimationEasing.transform(0.5f) > 0.5f)
+        assertEquals(175, SIZE_ANIMATION_DURATION_MILLIS)
+        assertEquals(0f, sizeAnimationEasing.transform(0f), 0.0001f)
+        assertEquals(1f, sizeAnimationEasing.transform(1f), 0.0001f)
+        assertTrue(sizeAnimationEasing.transform(0.5f) > 0.5f)
     }
 }

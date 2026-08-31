@@ -2,35 +2,64 @@ package dev.caferati.awesomebutton
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 
-/** Theme-local style values that map into [AwesomeButtonStyle]. */
-data class ThemeButtonStyle(
-    val activityColor: Color? = null,
-    val backgroundActive: Color? = null,
-    val backgroundColor: Color? = null,
-    val backgroundDarker: Color? = null,
-    val backgroundPlaceholder: Color? = null,
-    val backgroundProgress: Color? = null,
-    val backgroundShadow: Color? = null,
-    val borderColor: Color? = null,
-    val borderRadius: Dp? = null,
-    val borderBottomLeftRadius: Dp? = null,
-    val borderBottomRightRadius: Dp? = null,
-    val borderTopLeftRadius: Dp? = null,
-    val borderTopRightRadius: Dp? = null,
-    val borderWidth: Dp? = null,
-    val height: Dp? = null,
-    val paddingBottom: Dp? = null,
-    val paddingHorizontal: Dp? = null,
-    val paddingTop: Dp? = null,
-    val raiseLevel: Dp? = null,
-    val textColor: Color? = null,
-    val textLineHeight: TextUnit? = null,
-    val textSize: TextUnit? = null,
-    val width: Dp? = null,
+/**
+ * Theme-local values mapped into [AwesomeButtonStyle]. Null fields defer to the size or fallback
+ * layer, and numeric values use the same non-negative normalization as the core button.
+ *
+ * @property activityColor progress-indicator color.
+ * @property backgroundActive pressed face color.
+ * @property backgroundColor idle face color.
+ * @property backgroundDarker legacy name for the lower depth-layer color.
+ * @property backgroundPlaceholder placeholder face color.
+ * @property backgroundProgress progress-layer color.
+ * @property backgroundShadow legacy name for the outer shadow color.
+ * @property borderColor face border color.
+ * @property borderRadius fallback radius for every corner.
+ * @property borderBottomLeftRadius physical bottom-left corner override.
+ * @property borderBottomRightRadius physical bottom-right corner override.
+ * @property borderTopLeftRadius physical top-left corner override.
+ * @property borderTopRightRadius physical top-right corner override.
+ * @property borderWidth face border width in density-independent pixels.
+ * @property height themed face height in density-independent pixels.
+ * @property paddingBottom bottom content padding in density-independent pixels.
+ * @property paddingHorizontal horizontal content padding in density-independent pixels.
+ * @property paddingTop top content padding in density-independent pixels.
+ * @property raiseLevel legacy name for visible depth height in density-independent pixels.
+ * @property textColor built-in label foreground color.
+ * @property textLineHeight built-in label line height.
+ * @property textSize built-in label size.
+ * @property width themed width in density-independent pixels.
+ */
+public data class ThemeButtonStyle(
+    public val activityColor: Color? = null,
+    public val backgroundActive: Color? = null,
+    public val backgroundColor: Color? = null,
+    public val backgroundDarker: Color? = null,
+    public val backgroundPlaceholder: Color? = null,
+    public val backgroundProgress: Color? = null,
+    public val backgroundShadow: Color? = null,
+    public val borderColor: Color? = null,
+    public val borderRadius: Dp? = null,
+    public val borderBottomLeftRadius: Dp? = null,
+    public val borderBottomRightRadius: Dp? = null,
+    public val borderTopLeftRadius: Dp? = null,
+    public val borderTopRightRadius: Dp? = null,
+    public val borderWidth: Dp? = null,
+    public val height: Dp? = null,
+    public val paddingBottom: Dp? = null,
+    public val paddingHorizontal: Dp? = null,
+    public val paddingTop: Dp? = null,
+    public val raiseLevel: Dp? = null,
+    public val textColor: Color? = null,
+    public val textLineHeight: TextUnit? = null,
+    public val textSize: TextUnit? = null,
+    public val width: Dp? = null,
 ) {
-    fun merge(other: ThemeButtonStyle?): ThemeButtonStyle {
+    /** Returns this style with every non-null field from [other] applied. */
+    public fun merge(other: ThemeButtonStyle?): ThemeButtonStyle {
         if (other == null) return this
 
         return ThemeButtonStyle(
@@ -61,50 +90,95 @@ data class ThemeButtonStyle(
     }
 }
 
-/** Size preset values used by [ThemedButton]. */
-data class ThemeSizeStyle(
-    val width: Dp? = null,
-    val height: Dp? = null,
-    val textSize: TextUnit? = null,
-    val paddingHorizontal: Dp? = null,
+/**
+ * Size preset values used by [ThemedButton].
+ *
+ * @property width preset width in density-independent pixels.
+ * @property height preset face height in density-independent pixels.
+ * @property textSize preset built-in label size.
+ * @property paddingHorizontal preset horizontal padding in density-independent pixels.
+ */
+public data class ThemeSizeStyle(
+    public val width: Dp? = null,
+    public val height: Dp? = null,
+    public val textSize: TextUnit? = null,
+    public val paddingHorizontal: Dp? = null,
 )
 
-/** Complete theme definition for [ThemedButton]. */
-open class ThemeDefinition(
-    open val title: String,
-    open val background: Color,
-    open val color: Color,
-    open val buttons: Map<ButtonVariant, ThemeButtonStyle>,
-    open val size: Map<ButtonSize, ThemeSizeStyle>,
+/**
+ * Complete theme definition for [ThemedButton].
+ *
+ * @property title human-readable theme title.
+ * @property background showcase background color.
+ * @property color showcase foreground color.
+ * @property buttons variant-to-style map.
+ * @property size named size-preset map.
+ */
+public open class ThemeDefinition(
+    public open val title: String,
+    public open val background: Color,
+    public open val color: Color,
+    public open val buttons: Map<ButtonVariant, ThemeButtonStyle>,
+    public open val size: Map<ButtonSize, ThemeSizeStyle>,
 )
 
-/** Built-in theme definition decorated with registry navigation metadata. */
-data class RegisteredThemeDefinition(
-    override val title: String,
-    override val background: Color,
-    override val color: Color,
-    override val buttons: Map<ButtonVariant, ThemeButtonStyle>,
-    override val size: Map<ButtonSize, ThemeSizeStyle>,
-    val name: ThemeName,
-    val next: Boolean,
-    val prev: Boolean,
+/**
+ * Built-in theme definition decorated with registry navigation metadata.
+ *
+ * @property title human-readable theme title.
+ * @property background showcase background color.
+ * @property color showcase foreground color.
+ * @property buttons variant-to-style map.
+ * @property size named size-preset map.
+ * @property name stable built-in theme name.
+ * @property next whether another registered theme follows this one.
+ * @property prev whether another registered theme precedes this one.
+ */
+public data class RegisteredThemeDefinition(
+    public override val title: String,
+    public override val background: Color,
+    public override val color: Color,
+    public override val buttons: Map<ButtonVariant, ThemeButtonStyle>,
+    public override val size: Map<ButtonSize, ThemeSizeStyle>,
+    public val name: ThemeName,
+    public val next: Boolean,
+    public val prev: Boolean,
 ) : ThemeDefinition(title, background, color, buttons, size)
 
-internal fun ThemeButtonStyle.toAwesomeButtonStyle(): AwesomeButtonStyle {
-    val baseRadius = borderRadius
+internal fun ThemeButtonStyle.toAwesomeButtonStyle(
+    layoutDirection: LayoutDirection = LayoutDirection.Ltr,
+): AwesomeButtonStyle {
+    val baseRadius = normalizeOptionalDp(borderRadius)
+    val normalizedTopLeft = normalizeOptionalDp(borderTopLeftRadius)
+    val normalizedTopRight = normalizeOptionalDp(borderTopRightRadius)
+    val normalizedBottomLeft = normalizeOptionalDp(borderBottomLeftRadius)
+    val normalizedBottomRight = normalizeOptionalDp(borderBottomRightRadius)
     val hasPerCornerRadius =
-        borderTopLeftRadius != null ||
-            borderTopRightRadius != null ||
-            borderBottomRightRadius != null ||
-            borderBottomLeftRadius != null
+        normalizedTopLeft != null ||
+            normalizedTopRight != null ||
+            normalizedBottomRight != null ||
+            normalizedBottomLeft != null
     val cornerRadii =
         if (hasPerCornerRadius) {
-            AwesomeButtonCornerRadii(
-                topStart = borderTopLeftRadius ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
-                topEnd = borderTopRightRadius ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
-                bottomEnd = borderBottomRightRadius ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
-                bottomStart = borderBottomLeftRadius ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
-            )
+            if (layoutDirection == LayoutDirection.Ltr) {
+                AwesomeButtonCornerRadii(
+                    topStart = normalizedTopLeft ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                    topEnd = normalizedTopRight ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                    bottomEnd =
+                        normalizedBottomRight ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                    bottomStart =
+                        normalizedBottomLeft ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                )
+            } else {
+                AwesomeButtonCornerRadii(
+                    topStart = normalizedTopRight ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                    topEnd = normalizedTopLeft ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                    bottomEnd =
+                        normalizedBottomLeft ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                    bottomStart =
+                        normalizedBottomRight ?: baseRadius ?: AwesomeButtonThemeData.fallbackStyle.borderRadius!!,
+                )
+            }
         } else {
             null
         }

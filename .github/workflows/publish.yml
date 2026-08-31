@@ -4,52 +4,112 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - "v*"
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  publish:
+  verification:
+    name: Verify package before publication
     runs-on: ubuntu-latest
-    env:
-      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
-      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+    timeout-minutes: 75
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+
+      - name: Set up Temurin JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
 
-      - name: Unit tests
-        run: ./gradlew :awesome-button-compose:testDebugUnitTest
+      - name: Enable KVM access
+        run: |
+          sudo chown root:kvm /dev/kvm
+          sudo chmod 660 /dev/kvm
 
-      - name: Assemble release
-        run: ./gradlew :awesome-button-compose:assembleRelease
+      - name: Run complete package release preflight
+        run: scripts/release-preflight.sh
+
+      - name: Upload informational JVM coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kotlin-awesome-button-publish-verification-kover
+          path: awesome-button-compose/build/reports/kover/debug/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload managed-device test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kotlin-awesome-button-publish-verification-api35
+          path: |
+            awesome-button-compose/build/reports/androidTests/managedDevice/
+            awesome-button-compose/build/outputs/androidTest-results/managedDevice/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    name: Publish verified package
+    needs: verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout verified revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+
+      - name: Set up Temurin JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
 
       - name: Check publishing secrets
         id: publishing-secrets
         shell: bash
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
         run: |
           if [[ -n "${ORG_GRADLE_PROJECT_mavenCentralUsername}" \
             && -n "${ORG_GRADLE_PROJECT_mavenCentralPassword}" \
             && -n "${ORG_GRADLE_PROJECT_signingInMemoryKey}" \
             && -n "${ORG_GRADLE_PROJECT_signingInMemoryKeyPassword}" ]]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo 'present=true' >> "$GITHUB_OUTPUT"
           else
-            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo 'present=false' >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish to Maven Central
         if: steps.publishing-secrets.outputs.present == 'true'
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
         run: ./gradlew :awesome-button-compose:publishAndReleaseToMavenCentral --no-configuration-cache
 
-      - name: Skip publish
+      - name: Skip publication without credentials
         if: steps.publishing-secrets.outputs.present != 'true'
-        run: echo "Publishing secrets are not configured; release upload skipped."
+        run: echo 'Publishing secrets are not configured; release upload skipped.'

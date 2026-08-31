@@ -41,17 +41,21 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
-private const val PlaceholderLaneWidthFactor = 0.55f
-private const val PlaceholderShimmerAlpha = 0.2f
+private const val PLACEHOLDER_LANE_WIDTH_FACTOR = 0.55f
+private const val PLACEHOLDER_SHIMMER_ALPHA = 0.2f
+internal val AWESOME_BUTTON_ACTIVITY_INDICATOR_SIZE = 22.dp
 
 @Composable
 internal fun BoxScope.ButtonLayers(
@@ -59,27 +63,19 @@ internal fun BoxScope.ButtonLayers(
     resolvedStyle: AwesomeButtonStyle,
     disabled: Boolean,
     isPlaceholder: Boolean,
-    activeOpacity: Float,
     progress: Boolean,
     showProgressBar: Boolean,
     busy: Boolean,
     showProgressVisuals: Boolean,
     pressValue: Float,
-    contentAlpha: Float,
-    activityAlpha: Float,
     progressOverlayAlpha: Float,
     progressValue: Float,
     paddingHorizontal: Dp,
     paddingTop: Dp,
     paddingBottom: Dp,
-    contentGap: Dp,
-    child: String?,
-    before: (@Composable RowScope.() -> Unit)?,
-    after: (@Composable RowScope.() -> Unit)?,
     extra: (@Composable BoxScope.() -> Unit)?,
     animatedPlaceholder: Boolean,
-    contentClipAlignment: ContentClipAlignment,
-    content: (@Composable RowScope.() -> Unit)?,
+    reduceMotion: Boolean,
 ) {
     val fallback = AwesomeButtonThemeData.fallbackStyle
     val shape = resolvedStyle.toShape()
@@ -108,62 +104,64 @@ internal fun BoxScope.ButtonLayers(
             resolvedStyle.borderColor ?: fallback.borderColor!!
         }
     val pressedFaceColor =
-        resolvedStyle.backgroundActive ?: (resolvedStyle.pressedOverlayColor ?: fallback.pressedOverlayColor!!).compositeOver(backgroundColor)
+        resolvedStyle.backgroundActive
+            ?: (resolvedStyle.pressedOverlayColor ?: fallback.pressedOverlayColor!!).compositeOver(backgroundColor)
     val visualPressValue = clampedVisualPressProgress(pressValue)
     val geometryPressValue = shellGeometryPressProgress(pressValue)
     val colorPressValue = if (progress && busy && !showProgressBar) 0f else visualPressValue
     val faceColor = lerp(backgroundColor, pressedFaceColor, colorPressValue)
     val borderWidth = resolvedStyle.borderWidth ?: fallback.borderWidth!!
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
     val placeholderHeightPx =
         with(density) {
             (resolvedStyle.textLineHeight ?: fallback.textLineHeight!!).toPx()
         }
-    val contentOpacity =
-        if (progress) {
-            contentAlpha.coerceIn(0f, 1f)
-        } else {
-            1f - ((1f - activeOpacity.coerceIn(0f, 1f)) * visualPressValue)
-        }
-
     Box(
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .fillMaxWidth(ShadowWidthFactor)
-            .height(geometry.shadowHeight)
-            .offset { IntOffset(0, geometry.shadowTopOffset(geometryPressValue).roundToPx()) }
-            .background(shadowColor, shape)
-            .testTag("AwesomeButtonShadow"),
+        modifier =
+            Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth(SHADOW_WIDTH_FACTOR)
+                .height(geometry.shadowHeight)
+                .offset { IntOffset(0, geometry.shadowTopOffset(geometryPressValue).roundToPx()) }
+                .background(shadowColor, shape)
+                .testTag("AwesomeButtonShadow"),
     )
 
     Box(
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .offset { IntOffset(0, geometry.raiseAmount.roundToPx()) }
-            .fillMaxWidth()
-            .requiredHeight(geometry.faceHeight)
-            .background(depthColor, shape)
-            .testTag("AwesomeButtonDepth"),
+        modifier =
+            Modifier
+                .align(Alignment.TopCenter)
+                .offset { IntOffset(0, geometry.raiseAmount.roundToPx()) }
+                .fillMaxWidth()
+                .requiredHeight(geometry.faceHeight)
+                .background(depthColor, shape)
+                .testTag("AwesomeButtonDepth"),
     )
 
     Box(
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .offset { IntOffset(0, geometry.faceTopOffset(geometryPressValue).roundToPx()) }
-            .fillMaxWidth()
-            .requiredHeight(geometry.faceHeight)
-            .clip(shape)
-            .background(faceColor, shape)
-            .then(if (borderWidth > 0.dp) Modifier.border(borderWidth, borderColor, shape) else Modifier)
-            .semantics {
-                awesomeButtonRawPressProgress = pressValue
-                awesomeButtonVisualPressProgress = visualPressValue
-                awesomeButtonGeometryPressProgress = geometryPressValue
-            }
-            .testTag("AwesomeButtonFace"),
+        modifier =
+            Modifier
+                .align(Alignment.TopCenter)
+                .offset { IntOffset(0, geometry.faceTopOffset(geometryPressValue).roundToPx()) }
+                .fillMaxWidth()
+                .requiredHeight(geometry.faceHeight)
+                .clip(shape)
+                .background(faceColor, shape)
+                .then(if (borderWidth > 0.dp) Modifier.border(borderWidth, borderColor, shape) else Modifier)
+                .semantics {
+                    awesomeButtonRawPressProgress = pressValue
+                    awesomeButtonVisualPressProgress = visualPressValue
+                    awesomeButtonGeometryPressProgress = geometryPressValue
+                }.testTag("AwesomeButtonFace"),
     ) {
         if (extra != null) {
-            Box(Modifier.matchParentSize(), content = extra)
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .clearAndSetSemantics { },
+                content = extra,
+            )
         }
 
         if (showProgressVisuals && showProgressBar) {
@@ -172,23 +170,26 @@ internal fun BoxScope.ButtonLayers(
                     .matchParentSize()
                     .graphicsLayer {
                         alpha = progressOverlayAlpha.coerceIn(0f, 1f)
-                    }
-                    .semantics {
+                    }.semantics {
                         awesomeButtonProgressOverlayAlpha = progressOverlayAlpha.coerceIn(0f, 1f)
-                    }
-                    .testTag("AwesomeButtonProgress"),
+                    }.testTag("AwesomeButtonProgress"),
             ) {
+                // The face owns the outer rounded clip. Keeping the translated fill rectangular
+                // gives its advancing edge the shared flat progress geometry.
                 Box(
                     Modifier
                         .matchParentSize()
                         .graphicsLayer {
-                            translationX = (progressValue.coerceIn(0f, 1f) - 1f) * size.width
-                        }
-                        .background(resolvedStyle.backgroundProgress ?: fallback.backgroundProgress!!, shape)
+                            translationX =
+                                awesomeButtonProgressTranslationX(
+                                    progress = progressValue,
+                                    width = size.width,
+                                    layoutDirection = layoutDirection,
+                                )
+                        }.background(resolvedStyle.backgroundProgress ?: fallback.backgroundProgress!!)
                         .semantics {
                             awesomeButtonProgressValue = progressValue.coerceIn(0f, 1f)
-                        }
-                        .testTag("AwesomeButtonProgressFill"),
+                        }.testTag("AwesomeButtonProgressFill"),
                 )
             }
         }
@@ -197,50 +198,23 @@ internal fun BoxScope.ButtonLayers(
             PlaceholderContent(
                 modifier = Modifier.matchParentSize(),
                 color = resolvedStyle.backgroundPlaceholder ?: fallback.backgroundPlaceholder!!,
-                animated = animatedPlaceholder,
+                animated = animatedPlaceholder && !reduceMotion,
                 paddingHorizontal = paddingHorizontal,
                 paddingTop = paddingTop,
                 paddingBottom = paddingBottom,
                 heightPx = placeholderHeightPx,
             )
-        } else {
-            ButtonContent(
-                modifier = Modifier.matchParentSize(),
-                resolvedStyle = resolvedStyle,
-                disabled = disabled,
-                alpha = contentOpacity,
-                scale = if (progress) contentAlpha else 1f,
-                paddingHorizontal = paddingHorizontal,
-                paddingTop = paddingTop,
-                paddingBottom = paddingBottom,
-                contentGap = contentGap,
-                child = child,
-                before = before,
-                after = after,
-                content = content,
-                contentClipAlignment = contentClipAlignment,
-            )
-        }
-
-        if (showProgressVisuals) {
-            LoadingSpinner(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(22.dp)
-                    .graphicsLayer {
-                        alpha = activityAlpha.coerceIn(0f, 1f)
-                        scaleX = activityAlpha
-                        scaleY = activityAlpha
-                    }
-                    .semantics {
-                        awesomeButtonActivityAlpha = activityAlpha.coerceIn(0f, 1f)
-                        awesomeButtonActivityScale = activityAlpha
-                    }
-                    .testTag("AwesomeButtonSpinner"),
-                color = resolvedStyle.activityColor ?: fallback.activityColor!!,
-            )
         }
     }
+}
+
+internal fun awesomeButtonProgressTranslationX(
+    progress: Float,
+    width: Float,
+    layoutDirection: LayoutDirection,
+): Float {
+    val remainingWidth = (1f - progress.coerceIn(0f, 1f)) * width
+    return if (layoutDirection == LayoutDirection.Rtl) remainingWidth else -remainingWidth
 }
 
 @Composable
@@ -259,6 +233,8 @@ internal fun ButtonContent(
     after: (@Composable RowScope.() -> Unit)?,
     content: (@Composable RowScope.() -> Unit)?,
     contentClipAlignment: ContentClipAlignment = ContentClipAlignment.Center,
+    hideMainContentSemantics: Boolean = false,
+    allowTextWrap: Boolean = false,
 ) {
     val fallback = AwesomeButtonThemeData.fallbackStyle
     val foregroundColor =
@@ -268,23 +244,22 @@ internal fun ButtonContent(
             resolvedStyle.foregroundColor ?: fallback.foregroundColor!!
         }
     Row(
-        modifier = modifier
-            .graphicsLayer {
-                this.alpha = alpha.coerceIn(0f, 1f)
-                scaleX = scale
-                scaleY = scale
-            }
-            .semantics {
-                awesomeButtonContentAlpha = alpha.coerceIn(0f, 1f)
-                awesomeButtonContentScale = scale
-            }
-            .testTag("AwesomeButtonContent")
-            .padding(
-                start = paddingHorizontal,
-                end = paddingHorizontal,
-                top = paddingTop,
-                bottom = paddingBottom,
-            ),
+        modifier =
+            modifier
+                .graphicsLayer {
+                    this.alpha = alpha.coerceIn(0f, 1f)
+                    scaleX = scale
+                    scaleY = scale
+                }.semantics {
+                    awesomeButtonContentAlpha = alpha.coerceIn(0f, 1f)
+                    awesomeButtonContentScale = scale
+                }.testTag("AwesomeButtonContent")
+                .padding(
+                    start = paddingHorizontal,
+                    end = paddingHorizontal,
+                    top = paddingTop,
+                    bottom = paddingBottom,
+                ),
         horizontalArrangement =
             if (contentClipAlignment == ContentClipAlignment.Leading) {
                 Arrangement.Start
@@ -294,52 +269,107 @@ internal fun ButtonContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (before != null) {
-            before()
+            Row(
+                modifier = Modifier.clearAndSetSemantics { },
+                content = before,
+            )
             if (child != null || content != null || after != null) {
                 Spacer(Modifier.width(contentGap))
             }
         }
 
         when {
-            content != null -> content()
-            child != null -> BasicText(
-                text = child,
-                style = TextStyle(
-                    color = foregroundColor,
-                    fontSize = resolvedStyle.textSize ?: fallback.textSize!!,
-                    lineHeight = resolvedStyle.textLineHeight ?: fallback.textLineHeight!!,
-                    fontFamily = resolvedStyle.textFontFamily,
-                    fontWeight = FontWeight.Bold,
-                ),
-                maxLines = 1,
-                softWrap = false,
-            )
+            content != null ->
+                Row(
+                    modifier =
+                        if (hideMainContentSemantics) {
+                            Modifier.clearAndSetSemantics { }
+                        } else {
+                            Modifier
+                        },
+                    content = content,
+                )
+            child != null ->
+                BasicText(
+                    modifier =
+                        if (hideMainContentSemantics) {
+                            Modifier.clearAndSetSemantics { }
+                        } else {
+                            Modifier
+                        },
+                    text = child,
+                    style =
+                        TextStyle(
+                            color = foregroundColor,
+                            fontSize = resolvedStyle.textSize ?: fallback.textSize!!,
+                            lineHeight = resolvedStyle.textLineHeight ?: fallback.textLineHeight!!,
+                            fontFamily = resolvedStyle.textFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    maxLines = if (allowTextWrap) Int.MAX_VALUE else 1,
+                    softWrap = allowTextWrap,
+                )
         }
 
         if (after != null) {
             if (child != null || content != null) {
                 Spacer(Modifier.width(contentGap))
             }
-            after()
+            Row(
+                modifier = Modifier.clearAndSetSemantics { },
+                content = after,
+            )
         }
     }
 }
 
 @Composable
-private fun LoadingSpinner(
+internal fun BoxScope.ButtonActivityOverlay(
+    activityAlpha: Float,
+    color: Color,
+    reduceMotion: Boolean,
+) {
+    LoadingSpinner(
+        modifier =
+            Modifier
+                .align(Alignment.Center)
+                .size(AWESOME_BUTTON_ACTIVITY_INDICATOR_SIZE)
+                .graphicsLayer {
+                    alpha = activityAlpha.coerceIn(0f, 1f)
+                    scaleX = activityAlpha
+                    scaleY = activityAlpha
+                }.semantics {
+                    awesomeButtonActivityAlpha = activityAlpha.coerceIn(0f, 1f)
+                    awesomeButtonActivityScale = activityAlpha
+                }.testTag("AwesomeButtonSpinner"),
+        color = color,
+        animated = !reduceMotion,
+    )
+}
+
+@Composable
+internal fun LoadingSpinner(
     modifier: Modifier,
     color: Color,
+    animated: Boolean,
 ) {
-    val transition = rememberInfiniteTransition(label = "awesomeButtonSpinner")
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 850, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "rotation",
-    )
+    val rotation =
+        if (animated) {
+            val transition = rememberInfiniteTransition(label = "awesomeButtonSpinner")
+            val animatedRotation by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween(durationMillis = 850, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart,
+                    ),
+                label = "rotation",
+            )
+            animatedRotation
+        } else {
+            -90f
+        }
     Canvas(modifier) {
         val strokeWidth = size.minDimension * 0.14f
         drawArc(
@@ -367,17 +397,18 @@ private fun PlaceholderContent(
     val density = LocalDensity.current
 
     BoxWithConstraints(
-        modifier = modifier.padding(
-            start = paddingHorizontal,
-            end = paddingHorizontal,
-            top = paddingTop,
-            bottom = paddingBottom,
-        ),
+        modifier =
+            modifier.padding(
+                start = paddingHorizontal,
+                end = paddingHorizontal,
+                top = paddingTop,
+                bottom = paddingBottom,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         val laneWidthPx =
             with(density) {
-                snappedPlaceholderMeasurementWidth(maxWidth.toPx() * PlaceholderLaneWidthFactor)
+                snappedPlaceholderMeasurementWidth(maxWidth.toPx() * PLACEHOLDER_LANE_WIDTH_FACTOR)
             }
         val laneHeightPx =
             with(density) {
@@ -386,24 +417,25 @@ private fun PlaceholderContent(
         val canAnimate = shouldRunPlaceholderAnimation(animated, laneWidthPx)
 
         Box(
-            modifier = Modifier
-                .requiredSize(
-                    width = with(density) { laneWidthPx.toDp() },
-                    height = with(density) { laneHeightPx.toDp() },
-                )
-                .clipToBounds()
-                .background(color)
-                .testTag("AwesomeButtonPlaceholder"),
+            modifier =
+                Modifier
+                    .requiredSize(
+                        width = with(density) { laneWidthPx.toDp() },
+                        height = with(density) { laneHeightPx.toDp() },
+                    ).clipToBounds()
+                    .background(color)
+                    .testTag("AwesomeButtonPlaceholder"),
         ) {
             if (canAnimate) {
                 val transition = rememberInfiniteTransition(label = "awesomeButtonPlaceholder")
                 val phase by transition.animateFloat(
                     initialValue = 0f,
                     targetValue = 1f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(durationMillis = PlaceholderLoopDurationMillis, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart,
-                    ),
+                    animationSpec =
+                        infiniteRepeatable(
+                            animation = tween(durationMillis = PLACEHOLDER_LOOP_DURATION_MILLIS, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart,
+                        ),
                     label = "placeholderPhase",
                 )
                 val bandWidthPx = placeholderShimmerWidth(laneWidthPx)
@@ -415,26 +447,25 @@ private fun PlaceholderContent(
                     )
 
                 Box(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                x = segment.leadingXPx.roundToInt(),
-                                y = 0,
-                            )
-                        }
-                        .requiredSize(
-                            width = with(density) { segment.widthPx.toDp() },
-                            height = with(density) { laneHeightPx.toDp() },
-                        )
-                        .background(Color.Black.copy(alpha = PlaceholderShimmerAlpha))
-                        .testTag("AwesomeButtonPlaceholderShimmer"),
+                    modifier =
+                        Modifier
+                            .offset {
+                                IntOffset(
+                                    x = segment.leadingXPx.roundToInt(),
+                                    y = 0,
+                                )
+                            }.requiredSize(
+                                width = with(density) { segment.widthPx.toDp() },
+                                height = with(density) { laneHeightPx.toDp() },
+                            ).background(Color.Black.copy(alpha = PLACEHOLDER_SHIMMER_ALPHA))
+                            .testTag("AwesomeButtonPlaceholderShimmer"),
                 )
             }
         }
     }
 }
 
-private fun AwesomeButtonStyle.toShape(): RoundedCornerShape {
+internal fun AwesomeButtonStyle.toShape(): RoundedCornerShape {
     val fallbackRadius = AwesomeButtonThemeData.fallbackStyle.borderRadius!!
     val radii = cornerRadii
     return if (radii != null) {
