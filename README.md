@@ -57,7 +57,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("dev.caferati:awesome-button-compose:1.0.0")
+    implementation("dev.caferati:awesome-button-compose:1.1.0")
 }
 ```
 
@@ -422,7 +422,7 @@ opacity clamps to `[0, 1]`. Fixed width zero remains explicit.
 The package targets Android Jetpack Compose and follows Compose ownership for
 recomposition, remembered state, structured coroutine cancellation, pointer
 and key input, and semantics. Android View/XML widgets and Compose
-Multiplatform targets are not part of the `1.0.0` package surface.
+Multiplatform targets are not part of the `1.1.0` package surface.
 
 ## Development
 
@@ -454,7 +454,7 @@ Publication is configured for Maven Central through Sonatype Central Portal.
 The released artifact is:
 
 ```text
-dev.caferati:awesome-button-compose:1.0.0
+dev.caferati:awesome-button-compose:1.1.0
 ```
 
 Required release credentials are supplied through user Gradle properties or CI
