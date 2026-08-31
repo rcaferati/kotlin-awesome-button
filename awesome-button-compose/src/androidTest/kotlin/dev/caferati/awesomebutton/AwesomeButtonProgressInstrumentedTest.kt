@@ -2,8 +2,11 @@ package dev.caferati.awesomebutton
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -11,9 +14,102 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.roundToInt
 
 @RunWith(AndroidJUnit4::class)
 class AwesomeButtonProgressInstrumentedTest : AwesomeButtonInstrumentedTestBase() {
+    @Test
+    fun progressFillKeepsAFlatMovingEdgeInsideRoundedFace() {
+        composeRule.setContent {
+            AwesomeButton(
+                child = "Upload",
+                width = 220.dp,
+                progress = true,
+                progressLoadingTimeMillis = 1_000,
+                style =
+                    AwesomeButtonStyle(
+                        backgroundColor = Color(0xFF2563EB),
+                        backgroundProgress = Color(0xFFEF4444),
+                        activityColor = Color.Transparent,
+                        borderRadius = 24.dp,
+                        raiseAmount = 0.dp,
+                    ),
+                onPress = { },
+            )
+        }
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            tapButton()
+            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.mainClock.advanceTimeBy(500)
+
+            val progress = semanticsFloat("AwesomeButtonProgressFill", awesomeButtonProgressValueKey)
+            assertTrue("expected a partial progress frame, was $progress", progress in 0.25f..0.75f)
+
+            val image =
+                composeRule
+                    .onNodeWithTag("AwesomeButtonFace", useUnmergedTree = true)
+                    .captureToImage()
+            val pixels = image.toPixelMap()
+            val edgeX = (progress * image.width).roundToInt().coerceIn(1, image.width - 1)
+            val inset = (image.height * 0.08f).roundToInt().coerceAtLeast(2)
+            val sampleX = (edgeX - inset).coerceAtLeast(inset)
+            val topEdgeColor = pixels[sampleX, inset]
+            val centerEdgeColor = pixels[sampleX, image.height / 2]
+
+            assertColorClose(
+                expected = centerEdgeColor,
+                actual = topEdgeColor,
+                tolerance = 0.08f,
+            )
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    fun activityIndicatorKeepsNominalSizeAndCentersInsideFace() {
+        composeRule.setContent {
+            AwesomeButton(
+                child = "Upload",
+                width = 220.dp,
+                progress = true,
+                onPress = { },
+            )
+        }
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            tapButton()
+            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.mainClock.advanceTimeBy(PROGRESS_SWAP_DURATION_MILLIS.toLong())
+
+            assertClose(
+                expected = AWESOME_BUTTON_ACTIVITY_INDICATOR_SIZE.value,
+                actual = nodeWidth("AwesomeButtonSpinner"),
+                tolerance = 0.5f,
+            )
+            assertClose(
+                expected = AWESOME_BUTTON_ACTIVITY_INDICATOR_SIZE.value,
+                actual = nodeHeight("AwesomeButtonSpinner"),
+                tolerance = 0.5f,
+            )
+            assertClose(
+                expected = nodeCenterX("AwesomeButtonFace"),
+                actual = nodeCenterX("AwesomeButtonSpinner"),
+                tolerance = 0.5f,
+            )
+            assertClose(
+                expected = nodeCenterY("AwesomeButtonFace"),
+                actual = nodeCenterY("AwesomeButtonSpinner"),
+                tolerance = 0.5f,
+            )
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
     @Test
     fun deferredProgressPressUsesLatestCallbackAndRollsBackWhenItBecomesAbsent() {
         val callback =

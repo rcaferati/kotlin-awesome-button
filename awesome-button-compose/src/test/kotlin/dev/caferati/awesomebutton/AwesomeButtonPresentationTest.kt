@@ -101,6 +101,7 @@ class AwesomeButtonPresentationTest {
             themeStyle = themeStyle,
             style = style,
             styleIsResolvedFrame = false,
+            sizeTargetStyle = null,
             childPresent = childPresent,
             customContentPresent = customContentPresent,
             beforePresent = false,

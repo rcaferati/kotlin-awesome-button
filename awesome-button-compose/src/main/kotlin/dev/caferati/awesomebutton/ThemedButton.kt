@@ -236,6 +236,7 @@ public fun ThemedButton(
         stretch = stretch,
         style = themedStyle,
         styleIsResolvedFrame = true,
+        sizeTargetStyle = targetStyle,
         reduceMotionOverride = reduceMotion,
         activeOpacity = activeOpacity,
         debouncedPressTimeMillis = debouncedPressTimeMillis,

@@ -54,7 +54,10 @@ internal fun AutoWidthButtonLayout(
                 subcompose(ButtonLayoutChild.Content) {
                     Box(
                         modifier = Modifier.clip(contentClipShape),
-                        propagateMinConstraints = false,
+                        // Fixed and stretch widths must reach ButtonContent so its centered/leading
+                        // arrangement owns the label position. Auto width still arrives with a zero
+                        // minimum and therefore measures the same content at its intrinsic width.
+                        propagateMinConstraints = true,
                         content = it,
                     )
                 }.single()
@@ -94,18 +97,22 @@ internal fun AutoWidthButtonLayout(
         val faceHeightPx = maxOf(minimumFaceHeightPx, contentPlaceable?.height ?: 0)
         val totalHeightPx = faceHeightPx + raiseAmountPx
         val geometry = AwesomeButtonGeometry(faceHeightPx.toDp(), raiseAmountPx.toDp())
-        val contentTopOffsetPx = geometry.faceTopOffset(pressValue).roundToPx()
+        val faceTopOffsetPx = geometry.faceTopOffset(pressValue).roundToPx()
 
         val chromeMeasurable =
             subcompose(ButtonLayoutChild.Chrome) {
-                Box(propagateMinConstraints = true) { chrome(geometry) }
+                // The shell is fixed-size, but each chrome layer owns its own height. Forwarding the
+                // shell minimum would inflate the shorter shadow layer beyond its geometry bounds.
+                Box(propagateMinConstraints = false) { chrome(geometry) }
             }.single()
         val activityMeasurable =
             activity?.let {
                 subcompose(ButtonLayoutChild.Activity) {
                     Box(
                         modifier = Modifier.clip(contentClipShape),
-                        propagateMinConstraints = true,
+                        // The wrapper fills the moving face so BoxScope alignment can center the
+                        // indicator. Its fixed minimum must not replace the indicator's own size.
+                        propagateMinConstraints = false,
                         content = it,
                     )
                 }.single()
@@ -125,9 +132,12 @@ internal fun AutoWidthButtonLayout(
             chromePlaceable.place(visualX, visualY)
             contentPlaceable?.place(
                 x = visualX + ((targetWidthPx - contentPlaceable.width) / 2),
-                y = visualY + contentTopOffsetPx,
+                y =
+                    visualY +
+                        ((faceHeightPx - contentPlaceable.height) / 2) +
+                        faceTopOffsetPx,
             )
-            activityPlaceable?.place(visualX, visualY + contentTopOffsetPx)
+            activityPlaceable?.place(visualX, visualY + faceTopOffsetPx)
         }
     }
 }

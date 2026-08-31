@@ -328,7 +328,11 @@ internal fun resolveButtonTextUpdatePlan(
     }
 
     if (nextText == currentTarget) {
-        return ButtonTextUpdatePlan.Keep
+        return when {
+            nextText == displayedText -> ButtonTextUpdatePlan.Keep
+            displayedText.isNullOrEmpty() -> ButtonTextUpdatePlan.Assign(nextText)
+            else -> ButtonTextUpdatePlan.Transition(displayedText, nextText)
+        }
     }
 
     if (previousText.isNullOrEmpty()) {

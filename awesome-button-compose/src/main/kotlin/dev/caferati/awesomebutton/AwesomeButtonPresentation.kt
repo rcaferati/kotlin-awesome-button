@@ -40,6 +40,7 @@ internal data class AwesomeButtonPresentationInput(
     val themeStyle: AwesomeButtonStyle,
     val style: AwesomeButtonStyle?,
     val styleIsResolvedFrame: Boolean,
+    val sizeTargetStyle: AwesomeButtonStyle?,
     val childPresent: Boolean,
     val customContentPresent: Boolean,
     val beforePresent: Boolean,
@@ -78,6 +79,7 @@ internal fun resolveAwesomeButtonPresentation(input: AwesomeButtonPresentationIn
         } else {
             resolvedVisualStyle(input.themeStyle.merge(input.style))
         }
+    val sizeTargetStyle = resolvedVisualStyle(input.sizeTargetStyle ?: targetStyle)
     val normalizedWidth = normalizeOptionalDp(input.width)
     val normalizedHeight = normalizeRequiredDp(input.height, 52.dp)
     val paddingHorizontal = normalizeOptionalDp(input.paddingHorizontal) ?: 16.dp
@@ -100,13 +102,13 @@ internal fun resolveAwesomeButtonPresentation(input: AwesomeButtonPresentationIn
     val targetPaddingBottomPx = with(input.density) { paddingBottom.roundToPx() }
     val targetBorderWidthPx =
         with(input.density) {
-            (targetStyle.borderWidth ?: fallback.borderWidth!!).roundToPx()
+            (sizeTargetStyle.borderWidth ?: fallback.borderWidth!!).roundToPx()
         }
     val targetTextStyle =
         TextStyle(
-            fontSize = targetStyle.textSize ?: fallback.textSize!!,
-            lineHeight = targetStyle.textLineHeight ?: fallback.textLineHeight!!,
-            fontFamily = targetStyle.textFontFamily,
+            fontSize = sizeTargetStyle.textSize ?: fallback.textSize!!,
+            lineHeight = sizeTargetStyle.textLineHeight ?: fallback.textLineHeight!!,
+            fontFamily = sizeTargetStyle.textFontFamily,
             fontWeight = FontWeight.Bold,
         )
 
@@ -142,7 +144,7 @@ internal fun resolveAwesomeButtonPresentation(input: AwesomeButtonPresentationIn
                 paddingHorizontalPx = targetPaddingHorizontalPx,
                 paddingTopPx = targetPaddingTopPx,
                 paddingBottomPx = targetPaddingBottomPx,
-                style = targetStyle,
+                style = sizeTargetStyle,
             ),
     )
 }

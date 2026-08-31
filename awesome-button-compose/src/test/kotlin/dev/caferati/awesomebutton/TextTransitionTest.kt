@@ -79,6 +79,10 @@ class TextTransitionTest {
             ButtonTextUpdatePlan.Transition("old", "next"),
             resolveButtonTextUpdatePlan(true, "next", currentTarget = "old", displayedText = "old"),
         )
+        assertEquals(
+            ButtonTextUpdatePlan.Transition("Qvpium", "Large"),
+            resolveButtonTextUpdatePlan(true, "Large", currentTarget = "Large", displayedText = "Qvpium"),
+        )
     }
 
     @Test

@@ -61,6 +61,16 @@ abstract class AwesomeButtonInstrumentedTestBase {
         return (bounds.left.value + bounds.right.value) / 2f
     }
 
+    protected fun nodeHeight(tag: String): Float {
+        val bounds = composeRule.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        return bounds.bottom.value - bounds.top.value
+    }
+
+    protected fun nodeCenterY(tag: String): Float {
+        val bounds = composeRule.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        return (bounds.top.value + bounds.bottom.value) / 2f
+    }
+
     protected fun textCenterX(text: String): Float {
         val bounds = composeRule.onNodeWithText(text, useUnmergedTree = true).getUnclippedBoundsInRoot()
         return (bounds.left.value + bounds.right.value) / 2f

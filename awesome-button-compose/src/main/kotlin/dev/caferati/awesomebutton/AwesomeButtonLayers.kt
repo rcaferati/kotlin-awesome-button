@@ -55,6 +55,7 @@ import kotlin.math.roundToInt
 
 private const val PLACEHOLDER_LANE_WIDTH_FACTOR = 0.55f
 private const val PLACEHOLDER_SHIMMER_ALPHA = 0.2f
+internal val AWESOME_BUTTON_ACTIVITY_INDICATOR_SIZE = 22.dp
 
 @Composable
 internal fun BoxScope.ButtonLayers(
@@ -173,6 +174,8 @@ internal fun BoxScope.ButtonLayers(
                         awesomeButtonProgressOverlayAlpha = progressOverlayAlpha.coerceIn(0f, 1f)
                     }.testTag("AwesomeButtonProgress"),
             ) {
+                // The face owns the outer rounded clip. Keeping the translated fill rectangular
+                // gives its advancing edge the shared flat progress geometry.
                 Box(
                     Modifier
                         .matchParentSize()
@@ -183,7 +186,7 @@ internal fun BoxScope.ButtonLayers(
                                     width = size.width,
                                     layoutDirection = layoutDirection,
                                 )
-                        }.background(resolvedStyle.backgroundProgress ?: fallback.backgroundProgress!!, shape)
+                        }.background(resolvedStyle.backgroundProgress ?: fallback.backgroundProgress!!)
                         .semantics {
                             awesomeButtonProgressValue = progressValue.coerceIn(0f, 1f)
                         }.testTag("AwesomeButtonProgressFill"),
@@ -330,7 +333,7 @@ internal fun BoxScope.ButtonActivityOverlay(
         modifier =
             Modifier
                 .align(Alignment.Center)
-                .size(22.dp)
+                .size(AWESOME_BUTTON_ACTIVITY_INDICATOR_SIZE)
                 .graphicsLayer {
                     alpha = activityAlpha.coerceIn(0f, 1f)
                     scaleX = activityAlpha

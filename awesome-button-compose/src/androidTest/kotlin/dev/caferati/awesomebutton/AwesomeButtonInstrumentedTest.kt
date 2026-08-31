@@ -7,11 +7,48 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class AwesomeButtonInstrumentedTest : AwesomeButtonInstrumentedTestBase() {
+    @Test
+    fun contentIsCenteredInFaceAndShadowRetainsItsGeometryHeight() {
+        composeRule.setContent {
+            ThemedButton(
+                child = "Primary",
+                name = ThemeName.Basic,
+                type = ButtonVariant.Primary,
+                size = ButtonSize.Medium,
+            )
+        }
+
+        composeRule.waitForIdle()
+
+        val buttonHeight = nodeHeight("AwesomeButton")
+        val faceHeight = nodeHeight("AwesomeButtonFace")
+        val raiseAmount = buttonHeight - faceHeight
+        val expectedShadowHeight = (faceHeight - raiseAmount).coerceAtLeast(0f)
+
+        assertClose(
+            expected = nodeCenterY("AwesomeButtonFace"),
+            actual = nodeCenterY("AwesomeButtonContent"),
+            tolerance = 0.5f,
+        )
+        assertClose(
+            expected = nodeCenterX("AwesomeButtonFace"),
+            actual = textCenterX("Primary"),
+            tolerance = 0.5f,
+        )
+        assertTrue("expected the test theme to have a visible raise amount", raiseAmount > 0f)
+        assertClose(
+            expected = expectedShadowHeight,
+            actual = nodeHeight("AwesomeButtonShadow"),
+            tolerance = 0.5f,
+        )
+    }
+
     @Test
     fun successfulClickDispatchesOnce() {
         var presses = 0

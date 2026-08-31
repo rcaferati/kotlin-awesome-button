@@ -18,6 +18,47 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AwesomeButtonTextTransitionInstrumentedTest : AwesomeButtonInstrumentedTestBase() {
     @Test
+    fun themedSizeStyleFramesDoNotFreezeTheVisibleTextTransition() {
+        var size by mutableStateOf(ButtonSize.Medium)
+
+        composeRule.setContent {
+            ThemedButton(
+                child =
+                    when (size) {
+                        ButtonSize.Small -> "Small"
+                        ButtonSize.Medium -> "Medium"
+                        ButtonSize.Large -> "Large"
+                        ButtonSize.Icon -> "Icon"
+                    },
+                name = ThemeName.Bruce,
+                type = ButtonVariant.Danger,
+                size = size,
+                textTransition = true,
+                textTransitionSlotStaggerMillis = 20,
+            )
+        }
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.runOnIdle {
+                size = ButtonSize.Large
+            }
+            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.mainClock.advanceTimeBy(1_000)
+            composeRule.onNodeWithText("Large").assertIsDisplayed()
+
+            composeRule.runOnIdle {
+                size = ButtonSize.Small
+            }
+            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.mainClock.advanceTimeBy(1_000)
+            composeRule.onNodeWithText("Small").assertIsDisplayed()
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
     fun fixedWidthTextTransitionShowsIntermediateTextBeforeTarget() {
         var label by mutableStateOf("welcome")
 

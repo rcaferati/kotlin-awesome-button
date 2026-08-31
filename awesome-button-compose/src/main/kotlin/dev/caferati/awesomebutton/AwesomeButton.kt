@@ -189,6 +189,7 @@ internal fun AwesomeButtonImpl(
     onProgressEnd: (() -> Unit)? = null,
     content: (@Composable RowScope.() -> Unit)? = null,
     styleIsResolvedFrame: Boolean = false,
+    sizeTargetStyle: AwesomeButtonStyle? = null,
     reduceMotionOverride: Boolean? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -203,6 +204,7 @@ internal fun AwesomeButtonImpl(
                 themeStyle = AwesomeButtonTheme.current.style,
                 style = style,
                 styleIsResolvedFrame = styleIsResolvedFrame,
+                sizeTargetStyle = sizeTargetStyle,
                 childPresent = child != null,
                 customContentPresent = content != null,
                 beforePresent = before != null,

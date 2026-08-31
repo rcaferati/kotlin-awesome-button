@@ -1,5 +1,8 @@
 package dev.caferati.awesomebutton.demo
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
@@ -33,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,12 +46,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import dev.caferati.awesomebutton.AwesomeButtonStyle
 import dev.caferati.awesomebutton.ButtonSize
 import dev.caferati.awesomebutton.ButtonVariant
@@ -194,6 +201,8 @@ private fun ThemedStackHost(
 
 @Composable
 private fun StaticHeaderBar(title: String) {
+    UpdateStatusBarIconAppearance(SecondaryHeaderColor)
+
     val density = LocalDensity.current
     val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
 
@@ -238,6 +247,8 @@ private fun ThemedHeaderBar(
         animationSpec = tween(durationMillis = 240),
         label = "themed-header-foreground",
     )
+    UpdateStatusBarIconAppearance(backgroundColor)
+
     val density = LocalDensity.current
     val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
 
@@ -303,6 +314,26 @@ private fun ThemedHeaderBar(
         }
     }
 }
+
+@Composable
+private fun UpdateStatusBarIconAppearance(backgroundColor: Color) {
+    val view = LocalView.current
+    val activity = remember(view.context) { view.context.findActivity() }
+    val useDarkIcons = backgroundColor.luminance() > 0.179f
+
+    SideEffect {
+        activity?.let {
+            WindowCompat.getInsetsController(it.window, view).isAppearanceLightStatusBars = useDarkIcons
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
 private fun themedStackContentTransform(direction: ThemedHeaderDirection): ContentTransform {
     val animationSpec = tween<IntOffset>(durationMillis = ThemedStackTransitionDurationMillis)
