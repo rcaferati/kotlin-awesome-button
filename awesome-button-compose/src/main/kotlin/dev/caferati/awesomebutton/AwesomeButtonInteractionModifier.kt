@@ -23,11 +23,12 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal data class AwesomeButtonInteractionSemantics(
     val effectiveDisabled: Boolean,
@@ -43,6 +44,8 @@ internal data class AwesomeButtonInteractionSemantics(
 )
 
 internal interface AwesomeButtonInteractionCommandBindings {
+    fun isMounted(): Boolean
+
     fun canBeginGesture(): Boolean
 
     fun hasLongPressHandler(): Boolean
@@ -81,6 +84,8 @@ internal class AwesomeButtonInteractionCommandPort {
     fun update(next: AwesomeButtonInteractionCommandBindings) {
         bindings = next
     }
+
+    fun isMounted(): Boolean = bindings.isMounted()
 
     fun canBeginGesture(): Boolean = bindings.canBeginGesture()
 
@@ -155,41 +160,38 @@ internal fun Modifier.awesomeButtonInteraction(
                     var endedInside = false
                     val longPressArmed = commands.hasLongPressHandler()
                     val token = commands.beginGesture() ?: return@awaitEachGesture
-                    pointerCoroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        commands.preparePressIn(token, pointerCoroutineScope)
-                    }
-                    val longPressJob =
-                        if (longPressArmed) {
-                            pointerCoroutineScope.launch {
-                                delay(viewConfiguration.longPressTimeoutMillis)
-                                commands.dispatchLongPress(token)
-                            }
-                        } else {
-                            null
-                        }
+                    val gestureFinished = CompletableDeferred<Unit>()
+                    pointerCoroutineScope.launchGestureWork(
+                        commands = commands,
+                        token = token,
+                        longPressArmed = longPressArmed,
+                        longPressTimeoutMillis = viewConfiguration.longPressTimeoutMillis,
+                        gestureFinished = gestureFinished,
+                    )
 
-                    try {
-                        while (commands.isGestureActive(token)) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
-                            val inside =
-                                change.position.x >= 0f &&
-                                    change.position.y >= 0f &&
-                                    change.position.x <= size.width &&
-                                    change.position.y <= size.height
-                            if (!inside) break
-                            if (!change.pressed) {
-                                endedInside = true
-                                break
-                            }
-                            change.consume()
-                            pointerId = change.id
+                    while (commands.isGestureActive(token)) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                        val inside =
+                            change.position.x >= 0f &&
+                                change.position.y >= 0f &&
+                                change.position.x <= size.width &&
+                                change.position.y <= size.height
+                        if (!inside) break
+                        if (!change.pressed) {
+                            // A detached pointer target is reported as a consumed terminal change.
+                            // It is teardown, not a user release, and must remain callback-silent.
+                            endedInside = !change.isConsumed
+                            break
                         }
-                    } finally {
-                        longPressJob?.cancel()
+                        change.consume()
+                        pointerId = change.id
                     }
 
-                    commands.finishGesture(token, inside = endedInside)
+                    gestureFinished.complete(Unit)
+                    if (commands.isMounted()) {
+                        commands.finishGesture(token, inside = endedInside)
+                    }
                 }
             }
         }.semantics(mergeDescendants = true) {
@@ -218,7 +220,35 @@ internal fun Modifier.awesomeButtonInteraction(
             }
         }
 
+private fun CoroutineScope.launchGestureWork(
+    commands: AwesomeButtonInteractionCommandPort,
+    token: Long,
+    longPressArmed: Boolean,
+    longPressTimeoutMillis: Long,
+    gestureFinished: CompletableDeferred<Unit>,
+) = launch(start = CoroutineStart.UNDISPATCHED) {
+    coroutineScope {
+        launch(start = CoroutineStart.UNDISPATCHED) {
+            commands.preparePressIn(token, this@coroutineScope)
+        }
+        if (longPressArmed) {
+            launch {
+                val finishedBeforeTimeout =
+                    withTimeoutOrNull(longPressTimeoutMillis) {
+                        gestureFinished.await()
+                        true
+                    } ?: false
+                if (!finishedBeforeTimeout) {
+                    commands.dispatchLongPress(token)
+                }
+            }
+        }
+    }
+}
+
 private object InactiveInteractionBindings : AwesomeButtonInteractionCommandBindings {
+    override fun isMounted(): Boolean = false
+
     override fun canBeginGesture(): Boolean = false
 
     override fun hasLongPressHandler(): Boolean = false

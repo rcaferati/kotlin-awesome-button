@@ -13,7 +13,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
 
 internal data class AwesomeButtonProgressDependencies(
     val onPress: AwesomeButtonPressCallback?,
@@ -105,8 +104,10 @@ internal class AwesomeButtonProgressOwner(
                 resetVisualState(unmount = false)
                 if (startDependencies.reduceMotion) progressValue.snapTo(1f)
                 overlayOpacity.snapTo(if (startDependencies.showProgressBar) 1f else 0f)
-                commands.currentDependencies().onProgressStart?.invoke()
-                yield()
+                commands.currentDependencies().onProgressStart?.let { callback ->
+                    callback()
+                    awaitDeferredFrame()
+                }
                 if (!owns(generation)) return@launch
                 val committedDependencies = commands.currentDependencies()
                 if (committedDependencies.effectiveDisabled || committedDependencies.onPress == null) {
@@ -259,7 +260,7 @@ internal class AwesomeButtonProgressOwner(
         rootJob?.cancel()
         rootJob =
             scope.launch {
-                yield()
+                awaitDeferredFrame()
                 if (!owns(generation)) return@launch
                 val reduceMotion = commands.currentDependencies().reduceMotion
                 if (reduceMotion) {
@@ -333,7 +334,10 @@ internal class AwesomeButtonProgressOwner(
                 resetVisualState(unmount = false)
                 completionCallbackSnapshot = null
                 progressEndCallbackSnapshot = null
-                callbackSnapshot?.invoke()
+                callbackSnapshot?.let { callback ->
+                    callback()
+                    awaitDeferredFrame()
+                }
                 if (!isCurrent(generation)) return@launch
                 progressEndSnapshot?.invoke()
                 if (isCurrent(generation)) clearCompletionState()

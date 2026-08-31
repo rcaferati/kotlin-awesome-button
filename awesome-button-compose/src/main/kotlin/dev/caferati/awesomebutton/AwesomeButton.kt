@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -29,7 +30,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
 
 /**
  * Renders an Awesome Button using native Compose layout and interaction ownership.
@@ -428,10 +428,13 @@ internal fun AwesomeButtonImpl(
         canStartGesture(dependencies) &&
             (activeTerminalGeneration == null || releaseOwner.activeGeneration != null)
 
-    fun dispatchReleaseSettlement(settlement: AwesomeButtonReleaseSettlement?): Boolean {
+    suspend fun dispatchReleaseSettlement(settlement: AwesomeButtonReleaseSettlement?): Boolean {
         settlement ?: return false
         if (!mounted) return false
-        settlement.onPressedOut?.invoke()
+        settlement.onPressedOut?.let { callback ->
+            callback()
+            withFrameNanos { }
+        }
         if (!mounted) return false
         sizeTextOwner.settleDeferredAfterRelease()
         return true
@@ -456,8 +459,10 @@ internal fun AwesomeButtonImpl(
         gestureScope: CoroutineScope,
     ): Boolean {
         releaseOwner.invalidate()
-        interactionDependencies.value.onPressIn?.invoke()
-        yield()
+        interactionDependencies.value.onPressIn?.let { callback ->
+            callback()
+            withFrameNanos { }
+        }
         if (
             !mounted ||
             !gestureOwner.isActive(token) ||
@@ -465,8 +470,10 @@ internal fun AwesomeButtonImpl(
         ) {
             return false
         }
-        interactionDependencies.value.onPressedIn?.invoke()
-        yield()
+        interactionDependencies.value.onPressedIn?.let { callback ->
+            callback()
+            withFrameNanos { }
+        }
         if (
             !mounted ||
             !gestureOwner.isActive(token) ||
@@ -548,8 +555,10 @@ internal fun AwesomeButtonImpl(
         scope.launch {
             try {
                 val pressedOutBeforePressOut = interactionDependencies.value.onPressedOut
-                interactionDependencies.value.onPressOut?.invoke()
-                yield()
+                interactionDependencies.value.onPressOut?.let { callback ->
+                    callback()
+                    withFrameNanos { }
+                }
                 if (!mounted || activeTerminalGeneration != generation) return@launch
                 val dispatchDependencies = interactionDependencies.value
                 if (!canDispatchTap(dispatchDependencies) || !consumeDebounceWindow()) {
@@ -560,7 +569,7 @@ internal fun AwesomeButtonImpl(
                     startProgressFlow(physicalLifecycle = true)
                 } else {
                     dispatchDependencies.onPress?.invoke(null)
-                    yield()
+                    withFrameNanos { }
                     if (!mounted || activeTerminalGeneration != generation) return@launch
                     releasePressedState(pressedOutBeforePressOut)
                 }
@@ -573,11 +582,16 @@ internal fun AwesomeButtonImpl(
     }
 
     fun cancelPressed(generation: Long) {
+        val pressOutSnapshot = interactionDependencies.value.onPressOut
+        val pressedOutSnapshot = interactionDependencies.value.onPressedOut
         scope.launch {
             try {
-                val pressedOutSnapshot = interactionDependencies.value.onPressedOut
-                interactionDependencies.value.onPressOut?.invoke()
-                yield()
+                withFrameNanos { }
+                if (!mounted || activeTerminalGeneration != generation) return@launch
+                pressOutSnapshot?.let { callback ->
+                    callback()
+                    withFrameNanos { }
+                }
                 if (!mounted || activeTerminalGeneration != generation) return@launch
                 releasePressedState(pressedOutSnapshot)
             } finally {
@@ -687,6 +701,8 @@ internal fun AwesomeButtonImpl(
     SideEffect {
         interactionCommands.update(
             object : AwesomeButtonInteractionCommandBindings {
+                override fun isMounted(): Boolean = mounted
+
                 override fun canBeginGesture(): Boolean = canBeginGesture()
 
                 override fun hasLongPressHandler(): Boolean = interactionDependencies.value.onLongPress != null

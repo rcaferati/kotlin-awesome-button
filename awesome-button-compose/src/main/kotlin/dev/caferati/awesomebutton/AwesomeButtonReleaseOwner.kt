@@ -6,11 +6,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 internal data class AwesomeButtonReleaseSettlement(
@@ -83,7 +83,7 @@ internal class AwesomeButtonReleaseOwner(
                             )
                         }
                         launch {
-                            delay(RELEASE_SPRING_SETTLE_DURATION_MILLIS.toLong())
+                            awaitReleaseSettlementFrame()
                             if (activeGeneration == releaseGeneration) {
                                 val result =
                                     AwesomeButtonReleaseSettlement(
@@ -140,5 +140,14 @@ internal class AwesomeButtonReleaseOwner(
 
     fun cancel() {
         invalidate()
+    }
+
+    private suspend fun awaitReleaseSettlementFrame() {
+        val startNanos = withFrameNanos { it }
+        val durationNanos = RELEASE_SPRING_SETTLE_DURATION_MILLIS * 1_000_000L
+        while (withFrameNanos { it } - startNanos < durationNanos) {
+            // The Compose frame clock owns release timing so Reduced Motion, tests, and teardown
+            // all observe one lifecycle rather than a separate wall-clock timer.
+        }
     }
 }
