@@ -26,12 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
@@ -47,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -64,12 +58,12 @@ import kotlinx.coroutines.delay
 
 private enum class DemoTab(
     val label: String,
-    val icon: ImageVector,
+    val icon: DemoIconAsset,
 ) {
-    Themed("Themed", Icons.Filled.Home),
-    Progress("Progress", Icons.Filled.Refresh),
-    Social("Social", Icons.Filled.Share),
-    SizeChanges("Size Changes", Icons.Filled.Settings),
+    Themed("Themed", DemoIconAsset.Paintbrush),
+    Progress("Progress", DemoIconAsset.Gauge),
+    Social("Social", DemoIconAsset.ShareNodes),
+    SizeChanges("Size Changes", DemoIconAsset.SizeChanges),
 }
 
 private enum class ThemedHeaderDirection {
@@ -158,7 +152,13 @@ internal fun DemoShell() {
                     NavigationBarItem(
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = null) },
+                        icon = {
+                            DemoIcon(
+                                asset = tab.icon,
+                                tint = LocalContentColor.current,
+                                size = 21.dp,
+                            )
+                        },
                         label = { Text(tab.label) },
                     )
                 }

@@ -1,18 +1,8 @@
 package dev.caferati.awesomebutton.demo
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -93,7 +83,8 @@ internal fun ThemedButtonsScreen(
                             FlatIconButton(
                                 themeName = theme.name,
                                 color = primaryButtonColor,
-                                imageVector = Icons.Filled.SwapHoriz,
+                                asset = DemoIconAsset.RightLeft,
+                                accessibilityLabel = "Cycle variant",
                             ) {
                                 transitionVariantIndex = (transitionVariantIndex + 1) % transitionVariants.size
                             }
@@ -114,7 +105,12 @@ internal fun ThemedButtonsScreen(
                             )
                         },
                         action = {
-                            FlatIconButton(theme.name, primaryButtonColor) {
+                            FlatIconButton(
+                                themeName = theme.name,
+                                color = primaryButtonColor,
+                                asset = DemoIconAsset.ForwardStep,
+                                accessibilityLabel = "Cycle text",
+                            ) {
                                 textTransitionIndex = (textTransitionIndex + 1) % textTransitionLabels.size
                             }
                         },
@@ -135,7 +131,12 @@ internal fun ThemedButtonsScreen(
                             )
                         },
                         action = {
-                            FlatIconButton(theme.name, primaryButtonColor) {
+                            FlatIconButton(
+                                themeName = theme.name,
+                                color = primaryButtonColor,
+                                asset = DemoIconAsset.ForwardStep,
+                                accessibilityLabel = "Cycle size",
+                            ) {
                                 sizeTransitionIndex = (sizeTransitionIndex + 1) % sizeTransitionLabels.size
                             }
                         },
@@ -163,14 +164,12 @@ internal fun ThemedButtonsScreen(
                         "Button Icon",
                         config = theme,
                         type = ButtonVariant.Primary,
+                        style = AwesomeButtonStyle(contentGap = 8.dp),
                         before = {
-                            Icon(
-                                imageVector = Icons.Filled.Menu,
-                                contentDescription = null,
+                            DemoIcon(
+                                asset = DemoIconAsset.Bars,
                                 tint = buttonTextColor(theme.name, ButtonVariant.Primary),
-                                modifier = Modifier
-                                    .padding(end = 5.dp)
-                                    .size(21.dp),
+                                size = 24.dp,
                             )
                         },
                     )
@@ -180,14 +179,12 @@ internal fun ThemedButtonsScreen(
                         "Button Icon",
                         config = theme,
                         type = ButtonVariant.Anchor,
+                        style = AwesomeButtonStyle(contentGap = 8.dp),
                         after = {
-                            Icon(
-                                imageVector = Icons.Filled.Apps,
-                                contentDescription = null,
+                            DemoIcon(
+                                asset = DemoIconAsset.TableCellsLarge,
                                 tint = buttonTextColor(theme.name, ButtonVariant.Anchor),
-                                modifier = Modifier
-                                    .padding(start = 5.dp)
-                                    .size(21.dp),
+                                size = 24.dp,
                             )
                         },
                     )
@@ -199,14 +196,12 @@ internal fun ThemedButtonsScreen(
                         type = ButtonVariant.Danger,
                         progress = true,
                         onPress = delayedCompletion(scope, 500),
+                        style = AwesomeButtonStyle(contentGap = 8.dp),
                         before = {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = null,
+                            DemoIcon(
+                                asset = DemoIconAsset.TrashCan,
                                 tint = buttonTextColor(theme.name, ButtonVariant.Danger),
-                                modifier = Modifier
-                                    .padding(end = 5.dp)
-                                    .size(21.dp),
+                                size = 24.dp,
                             )
                         },
                     )
@@ -216,12 +211,12 @@ internal fun ThemedButtonsScreen(
                         config = theme,
                         type = ButtonVariant.Primary,
                         size = ButtonSize.Icon,
+                        accessibilityLabel = "Add",
                         content = {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = null,
+                            DemoIcon(
+                                asset = DemoIconAsset.SquarePlus,
                                 tint = buttonTextColor(theme.name, ButtonVariant.Primary),
-                                modifier = Modifier.size(21.dp),
+                                size = 24.dp,
                             )
                         },
                     )
@@ -231,12 +226,12 @@ internal fun ThemedButtonsScreen(
                         config = theme,
                         type = ButtonVariant.Anchor,
                         size = ButtonSize.Icon,
+                        accessibilityLabel = "Add user",
                         content = {
-                            Icon(
-                                imageVector = Icons.Filled.PersonAdd,
-                                contentDescription = null,
+                            DemoIcon(
+                                asset = DemoIconAsset.UserPlus,
                                 tint = buttonTextColor(theme.name, ButtonVariant.Anchor),
-                                modifier = Modifier.size(21.dp),
+                                size = 24.dp,
                             )
                         },
                     )
@@ -248,12 +243,12 @@ internal fun ThemedButtonsScreen(
                         size = ButtonSize.Icon,
                         progress = true,
                         onPress = delayedCompletion(scope, 500),
+                        accessibilityLabel = "Delete",
                         content = {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = null,
+                            DemoIcon(
+                                asset = DemoIconAsset.TrashCan,
                                 tint = buttonTextColor(theme.name, ButtonVariant.Danger),
-                                modifier = Modifier.size(21.dp),
+                                size = 24.dp,
                             )
                         },
                     )
