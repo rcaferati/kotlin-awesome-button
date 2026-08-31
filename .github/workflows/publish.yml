@@ -110,6 +110,8 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
         run: ./gradlew :awesome-button-compose:publishAndReleaseToMavenCentral --no-configuration-cache
 
-      - name: Skip publication without credentials
+      - name: Fail publication without credentials
         if: steps.publishing-secrets.outputs.present != 'true'
-        run: echo 'Publishing secrets are not configured; release upload skipped.'
+        run: |
+          echo 'Publishing secrets are not configured; refusing to report a successful release.' >&2
+          exit 1

@@ -285,7 +285,7 @@ class AwesomeButtonProgressInstrumentedTest : AwesomeButtonInstrumentedTestBase(
                 events.clear()
                 scenario.value = 1
             }
-            composeRule.waitForIdle()
+            composeRule.mainClock.advanceTimeByFrame()
             tapButton()
             composeRule.mainClock.advanceTimeByFrame()
             composeRule.mainClock.advanceTimeBy(1_200)
@@ -320,7 +320,8 @@ class AwesomeButtonProgressInstrumentedTest : AwesomeButtonInstrumentedTestBase(
         composeRule.mainClock.autoAdvance = false
         try {
             tapButton()
-            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.mainClock.advanceTimeBy(100)
+            assertEquals(listOf("start", "press"), events)
             composeRule.runOnIdle { disabled.value = true }
             composeRule.mainClock.advanceTimeByFrame()
             composeRule.runOnIdle {
@@ -564,7 +565,7 @@ class AwesomeButtonProgressInstrumentedTest : AwesomeButtonInstrumentedTestBase(
         composeRule.mainClock.autoAdvance = false
         try {
             tapButton()
-            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.mainClock.advanceTimeBy(100)
             composeRule.runOnIdle {
                 capturedNext?.invoke { events.add("completion") }
             }

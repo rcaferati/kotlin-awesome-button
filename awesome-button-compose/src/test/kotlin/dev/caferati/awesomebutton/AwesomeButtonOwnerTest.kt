@@ -138,6 +138,8 @@ class AwesomeButtonOwnerTest {
         token: Long,
     ): AwesomeButtonInteractionCommandBindings =
         object : AwesomeButtonInteractionCommandBindings {
+            override fun isMounted(): Boolean = true
+
             override fun canBeginGesture(): Boolean = canBegin
 
             override fun hasLongPressHandler(): Boolean = false

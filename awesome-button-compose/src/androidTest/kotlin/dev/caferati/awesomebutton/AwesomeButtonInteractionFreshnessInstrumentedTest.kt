@@ -258,6 +258,7 @@ class AwesomeButtonInteractionFreshnessInstrumentedTest : AwesomeButtonInstrumen
             composeRule.runOnIdle { handler.value = { events += "A" } }
             pressButtonDown()
             composeRule.runOnIdle { handler.value = null }
+            composeRule.mainClock.advanceTimeByFrame()
             composeRule.runOnIdle { handler.value = { events += "B" } }
             composeRule.mainClock.advanceTimeBy(600)
             releaseButton()
@@ -314,7 +315,8 @@ class AwesomeButtonInteractionFreshnessInstrumentedTest : AwesomeButtonInstrumen
         composeRule.mainClock.autoAdvance = false
         try {
             tapButton()
-            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.mainClock.advanceTimeBy(100)
+            assertEquals(listOf("press"), events)
             composeRule.runOnIdle { pressedOutVersion.value = "B" }
             composeRule.mainClock.advanceTimeBy(1_000)
 

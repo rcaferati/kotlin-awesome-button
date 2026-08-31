@@ -81,11 +81,16 @@ Expected local artifacts:
 7. Create and push a tag:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag -a v1.1.0 <release-merge-commit> -m "Awesome Button Compose 1.1.0"
+git push origin refs/tags/v1.1.0
 ```
 
-8. Publish from GitHub Actions or locally:
+8. Confirm the tag-triggered GitHub Actions workflow runs the verified publication step. For a
+   transient retry, dispatch the same workflow at the immutable `v1.1.0` tag. Do not create or move a
+   replacement tag.
+
+For an explicitly chosen local fallback, run the publication command from the same clean release
+commit before pushing the tag, and do not also run the automated publication path:
 
 ```bash
 ./gradlew :awesome-button-compose:publishAndReleaseToMavenCentral
@@ -95,5 +100,5 @@ git push origin v1.0.0
 10. Wait for Maven Central propagation and verify consumer installation:
 
 ```kotlin
-implementation("dev.caferati:awesome-button-compose:1.0.0")
+implementation("dev.caferati:awesome-button-compose:1.1.0")
 ```

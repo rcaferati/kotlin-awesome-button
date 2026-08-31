@@ -1,13 +1,15 @@
 # Changelog
 
+All notable changes to `awesome-button-compose` are documented here.
+
 ## Unreleased
 
-- Hardened gesture ownership, callback freshness, progress completion, accessibility, Reduced Motion, large-text, RTL, validation, theme precedence, and canonical `x` compatibility without selecting a release version.
+## 1.1.0 - 2026-08-31
+
+- Hardened gesture ownership, callback freshness, progress completion, accessibility, Reduced Motion, large-text, RTL, validation, theme precedence, and canonical `x` compatibility.
 - Added package-owned regressions plus explicit API, standalone ABI, Dokka, ktlint, Kover, managed-device, Maven-shape, and CI quality gates.
 - Retained `Twitter` as a deprecated compatibility value.
 - Preserved explicitly requested flat visual styling while disabled; disabled state still blocks activation.
-
-All notable changes to `awesome-button-compose` are documented here.
 
 ## 1.0.0
 

@@ -42,7 +42,7 @@ class AwesomeButtonAccessibilityInstrumentedTest : AwesomeButtonInstrumentedTest
         node.assertContentDescriptionEquals("Save draft").assertHasClickAction()
         val click = node.fetchSemanticsNode().config[SemanticsActions.OnClick]
         assertEquals("Saves this draft", click.label)
-        node.performClick()
+        node.performSemanticsAction(SemanticsActions.OnClick)
         composeRule.waitForIdle()
 
         assertEquals(listOf("press"), events)
@@ -121,7 +121,9 @@ class AwesomeButtonAccessibilityInstrumentedTest : AwesomeButtonInstrumentedTest
             }
         }
 
-        composeRule.onNodeWithTag("AwesomeButton").performClick()
+        composeRule
+            .onNodeWithTag("AwesomeButton")
+            .performSemanticsAction(SemanticsActions.OnClick)
         composeRule.waitForIdle()
         next?.invoke { events += "completion" }
         composeRule.waitForIdle()
